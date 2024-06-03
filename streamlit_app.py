@@ -92,8 +92,11 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         memory=True,
     )
     
-    result = project_crew.kickoff()
-    return result
+    results = project_crew.kickoff()
+
+    # Combine results from all tasks into a single string
+    combined_results = "\n".join(result['output'] for result in results)
+    return combined_results
     
 @traceable
 def generate_pdf(result):
