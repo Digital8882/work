@@ -25,7 +25,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork7"
+os.environ["LANGSMITH_PROJECT"] = "SLwork8"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -74,29 +74,36 @@ def retrieve_from_airtable(record_id):
 
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location):
-    task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-    if selling_scope == "Locally":
-        task_description += f" Location: {location}."
+    try:
+        task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
+        if selling_scope == "Locally":
+            task_description += f" Location: {location}."
+        
+        new_task = Task(description=task_description, expected_output="...")
     
-    new_task = Task(description=task_description, expected_output="...")
-
-    project_crew = Crew(
-        tasks=[new_task, icp_task, jtbd_task, pains_task],
-        agents=[researcher, report_writer],
-        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=8,
-        process=Process.hierarchical,
-        memory=True,
-    )
+        project_crew = Crew(
+            tasks=[new_task, icp_task, jtbd_task, pains_task],
+            agents=[researcher, report_writer],
+            manager_llm=ChatOpenAI(temperature=0, model="gpt-4"),
+            max_rpm=8,
+            process=Process.hierarchical,
+            memory=True,
+        )
+        
+        results = project_crew.kickoff()
     
-    results = project_crew.kickoff()
-
-    # Access task outputs directly
-    icp_output = str(icp_task.output.exported_output)
-    jtbd_output = str(jtbd_task.output.exported_output)
-    pains_output = str(pains_task.output.exported_output)
-
-    return icp_output, jtbd_output, pains_output
+        # Access task outputs directly
+        icp_output = str(icp_task.output.exported_output)
+        jtbd_output = str(jtbd_task.output.exported_output)
+        pains_output = str(pains_task.output.exported_output)
+    
+        return icp_output, jtbd_output, pains_output
+    except BrokenPipeError as e:
+        logging.error(f"BrokenPipeError occurred: {e}")
+        raise
+    except Exception as e:
+        logging.error(f"An error occurred during the crew process: {e}")
+        raise
 
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
