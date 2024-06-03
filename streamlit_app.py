@@ -222,11 +222,9 @@ def main():
         }
         footer {visibility: hidden;}
         .css-1v0mbdj {padding-top: 0 !important;}
-        .block-container {padding-top: 20px !important;}
-        .stApp a:first-child {display: none;}
-        .css-15zrgzn {display: none;}
-        .css-eczf16 {display: none;}
-        .css-jn99sy {display: none;}
+        .block-container {padding-top: 1em !important;}
+        header {display: none;}
+        div[data-testid="stDecoration"] {height: none;}
         div[data-testid="stToolbar"] { display: none; }
         </style>
         <script>
