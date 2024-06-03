@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLw888"
+os.environ["LANGSMITH_PROJECT"] = "SLw868"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -159,6 +159,8 @@ class HTMLToPDF(FPDF):
         self.ln(20)
 
     def write_html(self, html):
+        # Remove leading and trailing '''html tags
+        html = html.replace("'''html", "").replace("'''", "")
         parser = HTMLParser()
         parser.handle_data = self.handle_data
         parser.handle_starttag = self.handle_starttag
@@ -167,7 +169,7 @@ class HTMLToPDF(FPDF):
 
     def handle_data(self, data):
         data = data.strip()  # Strip leading/trailing whitespace
-        if data and data != '`html':  # Skip unwanted tag
+        if data:  # Skip unwanted tag
             self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
@@ -180,13 +182,17 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", 'B', size=14)
         elif tag == 'p':
             self.set_font("Arial", size=12)
+            self.ln(10)  # Add extra space for paragraphs
+        elif tag == 'li':
+            self.set_x(10)  # Adjust left margin for list items
+            self.set_font("Arial", size=12)
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
             self.tag_stack.remove(tag)
         if tag in ['b', 'h1', 'h2']:
             self.set_font("Arial", size=12)
-        if tag == 'p':  # Add an extra newline after paragraphs
+        if tag == 'p':  # Adjust spacing after paragraphs
             self.ln(10)
 
 # Generate PDF
