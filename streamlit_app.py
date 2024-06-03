@@ -37,32 +37,6 @@ AIRTABLE_FIELDS = {
     'pains': 'PainsfldyazmtByhtLBEds'
 }
 
-# File to store user access records
-USER_RECORDS_FILE = "user_records.json"
-
-def load_user_records():
-    if os.path.exists(USER_RECORDS_FILE):
-        with open(USER_RECORDS_FILE, "r") as file:
-            return json.load(file)
-    return {}
-
-def save_user_records(records):
-    with open(USER_RECORDS_FILE, "w") as file:
-        json.dump(records, file)
-
-def can_generate_icp(email):
-    records = load_user_records()
-    if email in records:
-        last_generated = datetime.fromisoformat(records[email])
-        if datetime.now() - last_generated < timedelta(days=1):
-            return False
-    return True
-
-def update_user_record(email):
-    records = load_user_records()
-    records[email] = datetime.now().isoformat()
-    save_user_records(records)
-
 @traceable
 def send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
@@ -254,11 +228,9 @@ def main():
             st.error("Please fill in all fields correctly.")
             return
 
-
         with st.spinner('Processing... please keep the page open for 5 minutes until you receive an email with the report'):
             try:
                 icp_output, jtbd_output, pains_output = start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location)
-                update_user_record(email)
                 send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output)
                 send_email(email, icp_output, jtbd_output, pains_output)
                 st.success("The ICP has been generated and sent to your email.")
