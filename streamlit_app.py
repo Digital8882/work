@@ -17,6 +17,7 @@ from email import encoders
 import time
 import traceback
 from html.parser import HTMLParser
+import builtins
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -28,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwo88"
+os.environ["LANGSMITH_PROJECT"] = "SLwork4"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -41,6 +42,20 @@ AIRTABLE_FIELDS = {
     'jtbd': 'fldFFAnoI7to8ZXgu',
     'pains': 'fldyazmtByhtLBEds'
 }
+
+# Save the original print function
+original_print = builtins.print
+
+# Define a patched print function that logs instead of printing
+def patched_print(*args, **kwargs):
+    try:
+        original_print(*args, **kwargs)
+    except BrokenPipeError:
+        logging.error(f"BrokenPipeError: {args}")
+        logging.debug(traceback.format_exc())
+
+# Patch the print function
+builtins.print = patched_print
 
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
@@ -333,3 +348,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Restore the original print function after execution
+builtins.print = original_print
