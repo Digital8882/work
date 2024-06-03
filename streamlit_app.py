@@ -58,26 +58,24 @@ def update_user_record(email):
     records = load_user_records()
     records[email] = datetime.now().isoformat()
     save_user_records(records)
-    
+
 @traceable
-def send_to_airtable(email, opt_in):
-    url = f'https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}'
+def send_to_airtable(email, opt_in, name, insights):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
-        'Authorization': f'Bearer {AIRTABLE_API_KEY}',
-        'Content-Type': 'application/json'
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
+        "Content-Type": "application/json"
     }
-    payload = {
-        'records': [
-            {
-                'fields': {
-                    'Email': email,
-                    'Opt-in': opt_in
-                }
-            }
-        ]
+    data = {
+        "fields": {
+            "Email": email,
+            "Opt-in": opt_in,
+            "Name": name,
+            "Insights": insights
+        }
     }
-    response = requests.post(url, headers=headers, json=payload)
-    response.raise_for_status()
+    response = requests.post(url, headers=headers, data=json.dumps(data))
+    return response.status_code, response.json()
 
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location):
