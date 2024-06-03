@@ -7,14 +7,13 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-import requests
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-import json
+from pyairtable import Table
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,45 +39,38 @@ AIRTABLE_FIELDS = {
     'pains': 'PainsfldyazmtByhtLBEds'
 }
 
+table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json"
-    }
     data = {
-        "fields": {
-            "Email": email,
-            AIRTABLE_FIELDS['icp']: icp_output,
-            AIRTABLE_FIELDS['jtbd']: jtbd_output,
-            AIRTABLE_FIELDS['pains']: pains_output,
-        }
+        "Email": email,
+        AIRTABLE_FIELDS['icp']: icp_output,
+        AIRTABLE_FIELDS['jtbd']: jtbd_output,
+        AIRTABLE_FIELDS['pains']: pains_output,
     }
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-    if response.status_code == 200:
+    try:
+        record = table.create(data)
         logging.info("Airtable updated successfully")
-        return response.json().get('id')
-    logging.error(f"Failed to update Airtable: {response.text}")
-    return None
+        return record.get('id')
+    except Exception as e:
+        logging.error(f"Failed to update Airtable: {e}")
+        return None
 
 @traceable
 def retrieve_from_airtable(record_id):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}"
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        record = response.json().get('fields', {})
+    try:
+        record = table.get(record_id)
+        fields = record.get('fields', {})
         logging.info("Data retrieved from Airtable successfully")
         return (
-            record.get(AIRTABLE_FIELDS['icp'], ''),
-            record.get(AIRTABLE_FIELDS['jtbd'], ''),
-            record.get(AIRTABLE_FIELDS['pains'], '')
+            fields.get(AIRTABLE_FIELDS['icp'], ''),
+            fields.get(AIRTABLE_FIELDS['jtbd'], ''),
+            fields.get(AIRTABLE_FIELDS['pains'], '')
         )
-    logging.error(f"Failed to retrieve data from Airtable: {response.text}")
-    return None, None, None
+    except Exception as e:
+        logging.error(f"Failed to retrieve data from Airtable: {e}")
+        return None, None, None
 
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location):
