@@ -7,7 +7,7 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-from pyairtable import Api
+from pyairtable import Table
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -42,9 +42,8 @@ AIRTABLE_FIELDS = {
     'pains': 'fldyazmtByhtLBEds'
 }
 
-# Initialize Airtable API and table
-airtable_api = Api(AIRTABLE_API_KEY)
-airtable_table = airtable_api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+# Initialize Airtable table
+airtable_table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
