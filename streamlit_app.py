@@ -7,7 +7,6 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-from pyairtable import Api
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -17,7 +16,7 @@ from email import encoders
 import requests
 import time
 import traceback
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levellevelname)s - %(message)s')
@@ -29,7 +28,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork4"
+os.environ["LANGSMITH_PROJECT"] = "SLwork33"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -120,79 +119,74 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
-def parse_html_to_pdf_content(html_content):
-    soup = BeautifulSoup(html_content, 'html.parser')
-    parsed_content = []
-    
-    for element in soup.find_all(['h1', 'h2', 'p', 'b']):
-        if element.name == 'h1':
-            parsed_content.append(('H1', element.get_text()))
-        elif element.name == 'h2':
-            parsed_content.append(('H2', element.get_text()))
-        elif element.name == 'p':
-            parsed_content.append(('P', element.get_text()))
-        elif element.name == 'b':
-            parsed_content.append(('B', element.get_text()))
-    return parsed_content
+class HTMLToPDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.add_page()
+        self.set_font("Arial", size=12)
+        self.tag_stack = []
 
+    def header(self):
+        self.set_font("Arial", 'B', 12)
+        self.set_text_color(255, 165, 0)  # Orange color
+        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
+        self.ln(20)
+
+    def write_html(self, html):
+        parser = HTMLParser()
+        parser.handle_data = self.handle_data
+        parser.handle_starttag = self.handle_starttag
+        parser.handle_endtag = self.handle_endtag
+        parser.feed(html)
+
+    def handle_data(self, data):
+        data = data.strip()  # Strip leading/trailing whitespace
+        if data and data != '`html':  # Skip unwanted tag
+            self.multi_cell(0, 7, txt=data)
+
+    def handle_starttag(self, tag, attrs):
+        self.tag_stack.append(tag)
+        if tag == 'b':
+            self.set_font("Arial", 'B', size=12)
+        elif tag == 'h1':
+            self.set_font("Arial", 'B', size=16)
+        elif tag == 'h2':
+            self.set_font("Arial", 'B', size=14)
+        elif tag == 'p':
+            self.set_font("Arial", size=12)
+
+    def handle_endtag(self, tag):
+        if tag in self.tag_stack:
+            self.tag_stack.remove(tag)
+        if tag in ['b', 'h1', 'h2']:
+            self.set_font("Arial", size=12)
+        if tag == 'p':  # Add an extra newline after paragraphs
+            self.ln(10)
+
+# Generate PDF
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = FPDF()
-    pdf.add_page()
+    pdf = HTMLToPDF()
     
-    # Set the title
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
+    pdf.write_html(icp_output)
     
-    # Add the ICP content with parsed HTML
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt="ICP Output", ln=True, align='L')
-    pdf.set_font("Arial", size=12)
-    icp_parsed = parse_html_to_pdf_content(icp_output)
-    for tag, text in icp_parsed:
-        if tag == 'H1':
-            pdf.set_font("Arial", 'B', 16)
-        elif tag == 'H2':
-            pdf.set_font("Arial", 'B', 14)
-        elif tag == 'B':
-            pdf.set_font("Arial", 'B', 12)
-        else:
-            pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, text)
+    # Add space between sections
+    pdf.ln(10)
     
-    # Add the JTBD content with parsed HTML
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt="JTBD Output", ln=True, align='L')
-    pdf.set_font("Arial", size=12)
-    jtbd_parsed = parse_html_to_pdf_content(jtbd_output)
-    for tag, text in jtbd_parsed:
-        if tag == 'H1':
-            pdf.set_font("Arial", 'B', 16)
-        elif tag == 'H2':
-            pdf.set_font("Arial", 'B', 14)
-        elif tag == 'B':
-            pdf.set_font("Arial", 'B', 12)
-        else:
-            pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, text)
+    pdf.write_html(jtbd_output)
     
-    # Add the Pains content with parsed HTML
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(200, 10, txt="Pains Output", ln=True, align='L')
-    pdf.set_font("Arial", size=12)
-    pains_parsed = parse_html_to_pdf_content(pains_output)
-    for tag, text in pains_parsed:
-        if tag == 'H1':
-            pdf.set_font("Arial", 'B', 16)
-        elif tag == 'H2':
-            pdf.set_font("Arial", 'B', 14)
-        elif tag == 'B':
-            pdf.set_font("Arial", 'B', 12)
-        else:
-            pdf.set_font("Arial", size=12)
-        pdf.multi_cell(0, 10, text)
+    # Add space between sections
+    pdf.ln(10)
     
-    return pdf.output(dest="S").encode("latin1")
+    pdf.write_html(pains_output)
+    
+    pdf_output = pdf.output(dest="S").encode("latin1")
+    
+    # Save a copy locally for inspection
+    with open("report_debug.pdf", "wb") as f:
+        f.write(pdf_output)
+    
+    return pdf_output
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
