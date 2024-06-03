@@ -7,7 +7,6 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-from pyairtable import Table
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -42,20 +41,27 @@ AIRTABLE_FIELDS = {
     'pains': 'fldyazmtByhtLBEds'
 }
 
-# Initialize Airtable table
-airtable_table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+AIRTABLE_URL = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
+HEADERS = {
+    'Authorization': f'Bearer {AIRTABLE_API_KEY}',
+    'Content-Type': 'application/json'
+}
 
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     data = {
-        "Email": email,
-        AIRTABLE_FIELDS['icp']: icp_output,
-        AIRTABLE_FIELDS['jtbd']: jtbd_output,
-        AIRTABLE_FIELDS['pains']: pains_output,
+        "fields": {
+            "Email": email,
+            AIRTABLE_FIELDS['icp']: icp_output,
+            AIRTABLE_FIELDS['jtbd']: jtbd_output,
+            AIRTABLE_FIELDS['pains']: pains_output,
+        }
     }
     try:
         logging.info(f"Sending data to Airtable: {data}")
-        record = airtable_table.create(data)
+        response = requests.post(AIRTABLE_URL, json=data, headers=HEADERS)
+        response.raise_for_status()
+        record = response.json()
         logging.info(f"Airtable response: {record}")
         return record['id']
     except Exception as e:
@@ -66,7 +72,10 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
 @traceable
 def retrieve_from_airtable(record_id):
     try:
-        record = airtable_table.get(record_id)
+        url = f"{AIRTABLE_URL}/{record_id}"
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        record = response.json()
         fields = record.get('fields', {})
         logging.info("Data retrieved from Airtable successfully")
         return (
