@@ -23,7 +23,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork"
+os.environ["LANGSMITH_PROJECT"] = "SLwork1"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -70,8 +70,6 @@ def send_to_airtable(email, opt_in, name, insights):
         "fields": {
             "Email": email,
             "Opt-in": opt_in,
-            "Name": name,
-            "Insights": insights
         }
     }
     response = requests.post(url, headers=headers, data=json.dumps(data))
