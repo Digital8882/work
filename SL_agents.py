@@ -21,8 +21,7 @@ researcher = Agent(
         "Adopt an analytical, empathetic, and narrative-driven tone, weaving factual insights with interviewees' experiences to provide a compelling view of product's market landscape.""",
     verbose=False,
     allow_delegation=True,
-    max_rpm=6,    
-    max_itr=6,
+    max_rpm=5,    
     llm=ChatOpenAI(temperature=0, model="gpt-3.5-turbo", max_tokens=4096),
 )
 
@@ -32,6 +31,6 @@ report_writer = Agent(
     backstory="As a skilled report writer, you meticulously gather and synthesize customer insights, transforming raw data into actionable recommendations. Your reports provide valuable guidance for strategic planning and help the team make informed choices. Your attention to detail and clear communication style contribute to the success of our initiatives. Include headings, subheadings, bullet points, and numbered lists to organize the report in a structured and easy-to-read format. Use a professional, analytical tone throughout the report, ensuring clarity and accessibility necessary for understanding by team members across different functions.",
     verbose=True,
     allow_delegation=True,
-    max_rpm=6,
+    max_rpm=5,
     llm=ChatOpenAI(temperature=0, model="gpt-3.5-turbo", max_tokens=4096),
 )
