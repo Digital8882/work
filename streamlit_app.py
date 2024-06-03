@@ -23,7 +23,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork2"
+os.environ["LANGSMITH_PROJECT"] = "SLwork1"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -31,7 +31,11 @@ os.environ["LANGSMITH_API_KEY"] = "lsv2_sk_1634040ab7264671b921d5798db158b2_9ae5
 AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
 AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
 AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
-AIRTABLE_FIELD_ID = 'fldsx1iIk4FiRaLi8'
+AIRTABLE_FIELDS = {
+    'icp': 'JtbdfldFFAnoI7to8ZXgu',
+    'jtbd': 'JtbdfldFFAnoI7to8ZXgu',
+    'pains': 'PainsfldyazmtByhtLBEds'
+}
 
 # File to store user access records
 USER_RECORDS_FILE = "user_records.json"
@@ -60,7 +64,7 @@ def update_user_record(email):
     save_user_records(records)
 
 @traceable
-def send_to_airtable(email, opt_in):
+def send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -70,9 +74,21 @@ def send_to_airtable(email, opt_in):
         "fields": {
             "Email": email,
             "Opt-in": opt_in,
+            AIRTABLE_FIELDS['icp']: icp_output,
+            AIRTABLE_FIELDS['jtbd']: jtbd_output,
+            AIRTABLE_FIELDS['pains']: pains_output,
         }
     }
     response = requests.post(url, headers=headers, data=json.dumps(data))
+    return response.status_code, response.json()
+
+@traceable
+def get_from_airtable():
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}"
+    }
+    response = requests.get(url, headers=headers)
     return response.status_code, response.json()
 
 @traceable
@@ -94,12 +110,14 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     
     results = project_crew.kickoff()
 
-    # Combine results from all tasks into a single string
-    combined_results = "\n".join(result['output'] for result in results)
-    return combined_results
-    
+    icp_output = results[1]['output']
+    jtbd_output = results[2]['output']
+    pains_output = results[3]['output']
+
+    return icp_output, jtbd_output, pains_output
+
 @traceable
-def generate_pdf(result):
+def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = FPDF()
     pdf.add_page()
     
@@ -107,26 +125,29 @@ def generate_pdf(result):
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
     
-    # Add the result content with better formatting
+    # Add the ICP content
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, txt="ICP Output", ln=True, align='L')
     pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, icp_output)
     
-    # Split the result by lines
-    lines = result.split('\n')
+    # Add the JTBD content
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, txt="JTBD Output", ln=True, align='L')
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, jtbd_output)
     
-    for line in lines:
-        if "**" in line:  # Detect headings and subheadings
-            pdf.set_font("Arial", 'B', 12)
-            line = line.replace("**", "")
-        else:
-            pdf.set_font("Arial", size=12)
-        
-        pdf.multi_cell(0, 8, line.strip())  # Use tighter line spacing
+    # Add the Pains content
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(200, 10, txt="Pains Output", ln=True, align='L')
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, pains_output)
     
     return pdf.output(dest="S").encode("latin1")
 
 @traceable
-def send_email(email, result):
-    pdf_content = generate_pdf(result)
+def send_email(email, icp_output, jtbd_output, pains_output):
+    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)
     
     # Email details
     subject = 'Swift Launch ICP'
@@ -233,18 +254,15 @@ def main():
             st.error("Please fill in all fields correctly.")
             return
 
-        if not can_generate_icp(email):
-            st.warning("You have already generated a report today. Please try again tomorrow.")
-            return
 
         with st.spinner('Processing... please keep the page open for 5 minutes until you receive an email with the report'):
             try:
-                result = start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location)
+                icp_output, jtbd_output, pains_output = start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location)
                 update_user_record(email)
-                send_to_airtable(email, opt_in)
-                send_email(email, result)
+                send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output)
+                send_email(email, icp_output, jtbd_output, pains_output)
                 st.success("The ICP has been generated and sent to your email.")
-                download_button(result)
+                download_button(icp_output, jtbd_output, pains_output)
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
@@ -263,8 +281,8 @@ def validate_input(email, product_service, price, payment_frequency, selling_sco
         return False
     return True
 
-def download_button(result):
-    pdf_content = generate_pdf(result)
+def download_button(icp_output, jtbd_output, pains_output):
+    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)
 
     st.download_button(
         label="Download Result as PDF",
