@@ -16,6 +16,7 @@ from email import encoders
 import requests
 import time
 import traceback
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -27,7 +28,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork4"
+os.environ["LANGSMITH_PROJECT"] = "SLwork44"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -41,27 +42,21 @@ AIRTABLE_FIELDS = {
     'pains': 'fldyazmtByhtLBEds'
 }
 
-AIRTABLE_URL = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
-HEADERS = {
-    'Authorization': f'Bearer {AIRTABLE_API_KEY}',
-    'Content-Type': 'application/json'
-}
+# Initialize the Api class and access the table
+api = Api(AIRTABLE_API_KEY)
+airtable_table = api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     data = {
-        "fields": {
-            "Email": email,
-            AIRTABLE_FIELDS['icp']: icp_output,
-            AIRTABLE_FIELDS['jtbd']: jtbd_output,
-            AIRTABLE_FIELDS['pains']: pains_output,
-        }
+        "Email": email,
+        AIRTABLE_FIELDS['icp']: icp_output,
+        AIRTABLE_FIELDS['jtbd']: jtbd_output,
+        AIRTABLE_FIELDS['pains']: pains_output,
     }
     try:
         logging.info(f"Sending data to Airtable: {data}")
-        response = requests.post(AIRTABLE_URL, json=data, headers=HEADERS)
-        response.raise_for_status()
-        record = response.json()
+        record = airtable_table.create(data)
         logging.info(f"Airtable response: {record}")
         return record['id']
     except Exception as e:
@@ -72,10 +67,7 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
 @traceable
 def retrieve_from_airtable(record_id):
     try:
-        url = f"{AIRTABLE_URL}/{record_id}"
-        response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()
-        record = response.json()
+        record = airtable_table.get(record_id)
         fields = record.get('fields', {})
         logging.info("Data retrieved from Airtable successfully")
         return (
@@ -127,6 +119,21 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
+def parse_html_to_pdf_content(html_content):
+    soup = BeautifulSoup(html_content, 'html.parser')
+    parsed_content = []
+    
+    for element in soup.find_all(['h1', 'h2', 'p', 'b']):
+        if element.name == 'h1':
+            parsed_content.append(('H1', element.get_text()))
+        elif element.name == 'h2':
+            parsed_content.append(('H2', element.get_text()))
+        elif element.name == 'p':
+            parsed_content.append(('P', element.get_text()))
+        elif element.name == 'b':
+            parsed_content.append(('B', element.get_text()))
+    return parsed_content
+
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = FPDF()
@@ -136,23 +143,53 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
     
-    # Add the ICP content
+    # Add the ICP content with parsed HTML
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="ICP Output", ln=True, align='L')
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, icp_output)
+    icp_parsed = parse_html_to_pdf_content(icp_output)
+    for tag, text in icp_parsed:
+        if tag == 'H1':
+            pdf.set_font("Arial", 'B', 16)
+        elif tag == 'H2':
+            pdf.set_font("Arial", 'B', 14)
+        elif tag == 'B':
+            pdf.set_font("Arial", 'B', 12)
+        else:
+            pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, text)
     
-    # Add the JTBD content
+    # Add the JTBD content with parsed HTML
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="JTBD Output", ln=True, align='L')
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, jtbd_output)
+    jtbd_parsed = parse_html_to_pdf_content(jtbd_output)
+    for tag, text in jtbd_parsed:
+        if tag == 'H1':
+            pdf.set_font("Arial", 'B', 16)
+        elif tag == 'H2':
+            pdf.set_font("Arial", 'B', 14)
+        elif tag == 'B':
+            pdf.set_font("Arial", 'B', 12)
+        else:
+            pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, text)
     
-    # Add the Pains content
+    # Add the Pains content with parsed HTML
     pdf.set_font("Arial", 'B', 12)
     pdf.cell(200, 10, txt="Pains Output", ln=True, align='L')
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, pains_output)
+    pains_parsed = parse_html_to_pdf_content(pains_output)
+    for tag, text in pains_parsed:
+        if tag == 'H1':
+            pdf.set_font("Arial", 'B', 16)
+        elif tag == 'H2':
+            pdf.set_font("Arial", 'B', 14)
+        elif tag == 'B':
+            pdf.set_font("Arial", 'B', 12)
+        else:
+            pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, text)
     
     return pdf.output(dest="S").encode("latin1")
 
@@ -222,9 +259,11 @@ def main():
         }
         footer {visibility: hidden;}
         .css-1v0mbdj {padding-top: 0 !important;}
-        .block-container {padding-top: 1em !important;}
-        header {display: none;}
-        div[data-testid="stDecoration"] {height: none;}
+        .block-container {padding-top: 20px !important;}
+        .stApp a:first-child {display: none;}
+        .css-15zrgzn {display: none;}
+        .css-eczf16 {display: none;}
+        .css-jn99sy {display: none;}
         div[data-testid="stToolbar"] { display: none; }
         </style>
         <script>
