@@ -1,6 +1,6 @@
 import streamlit as st
 from SL_agents import researcher, report_writer
-from SL_tasks import icp_task jtbd_task pains_task
+from SL_tasks import icp_task, jtbd_task, pains_task
 from langchain_openai import ChatOpenAI
 from langsmith import traceable
 from crewai import Crew, Process, Task
