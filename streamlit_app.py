@@ -23,7 +23,7 @@ import builtins
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
-SMTP_SERVER = 'smtpout.secureserver.net'
+SMTP_SERVER = 'smtp-mail.outlook.com'
 SMTP_PORT = 587
 SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
