@@ -19,7 +19,7 @@ import traceback
 from html.parser import HTMLParser
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levellevelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
 SMTP_SERVER = 'smtpout.secureserver.net'
@@ -28,7 +28,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork33"
+os.environ["LANGSMITH_PROJECT"] = "SLwor88"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -41,83 +41,6 @@ AIRTABLE_FIELDS = {
     'jtbd': 'fldFFAnoI7to8ZXgu',
     'pains': 'fldyazmtByhtLBEds'
 }
-
-# Initialize the Api class and access the table
-api = Api(AIRTABLE_API_KEY)
-airtable_table = api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
-
-@traceable
-def send_to_airtable(email, icp_output, jtbd_output, pains_output):
-    data = {
-        "Email": email,
-        AIRTABLE_FIELDS['icp']: icp_output,
-        AIRTABLE_FIELDS['jtbd']: jtbd_output,
-        AIRTABLE_FIELDS['pains']: pains_output,
-    }
-    try:
-        logging.info(f"Sending data to Airtable: {data}")
-        record = airtable_table.create(data)
-        logging.info(f"Airtable response: {record}")
-        return record['id']
-    except Exception as e:
-        logging.error(f"Failed to update Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None
-
-@traceable
-def retrieve_from_airtable(record_id):
-    try:
-        record = airtable_table.get(record_id)
-        fields = record.get('fields', {})
-        logging.info("Data retrieved from Airtable successfully")
-        return (
-            fields.get(AIRTABLE_FIELDS['icp'], ''),
-            fields.get(AIRTABLE_FIELDS['jtbd'], ''),
-            fields.get(AIRTABLE_FIELDS['pains'], '')
-        )
-    except Exception as e:
-        logging.error(f"Failed to retrieve data from Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None, None, None
-
-@traceable
-def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
-    task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-    if selling_scope == "Locally":
-        task_description += f" Location: {location}."
-    
-    new_task = Task(description=task_description, expected_output="...")
-
-    project_crew = Crew(
-        tasks=[new_task, icp_task, jtbd_task, pains_task],
-        agents=[researcher, report_writer],
-        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=5,
-        process=Process.hierarchical,
-        memory=True,
-    )
-
-    for attempt in range(retries):
-        try:
-            logging.info(f"Starting crew process, attempt {attempt + 1}")
-            results = project_crew.kickoff()
-            # Access task outputs directly
-            icp_output = str(icp_task.output.exported_output)
-            jtbd_output = str(jtbd_task.output.exported_output)
-            pains_output = str(pains_task.output.exported_output)
-            logging.info("Crew process completed successfully")
-            return icp_output, jtbd_output, pains_output
-        except BrokenPipeError as e:
-            logging.error(f"BrokenPipeError occurred on attempt {attempt + 1}: {e}")
-            logging.debug(traceback.format_exc())
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff
-            else:
-                raise
-        except Exception as e:
-            logging.error(f"An error occurred during the crew process: {e}")
-            logging.debug(traceback.format_exc())
-            raise
 
 class HTMLToPDF(FPDF):
     def __init__(self):
@@ -187,6 +110,45 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
+
+@traceable
+def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
+    task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
+    if selling_scope == "Locally":
+        task_description += f" Location: {location}."
+    
+    new_task = Task(description=task_description, expected_output="...")
+
+    project_crew = Crew(
+        tasks=[new_task, icp_task, jtbd_task, pains_task],
+        agents=[researcher, report_writer],
+        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
+        max_rpm=5,
+        process=Process.hierarchical,
+        memory=True,
+    )
+
+    for attempt in range(retries):
+        try:
+            logging.info(f"Starting crew process, attempt {attempt + 1}")
+            results = project_crew.kickoff()
+            # Access task outputs directly
+            icp_output = str(icp_task.output.exported_output)
+            jtbd_output = str(jtbd_task.output.exported_output)
+            pains_output = str(pains_task.output.exported_output)
+            logging.info("Crew process completed successfully")
+            return icp_output, jtbd_output, pains_output
+        except BrokenPipeError as e:
+            logging.error(f"BrokenPipeError occurred on attempt {attempt + 1}: {e}")
+            logging.debug(traceback.format_exc())
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                raise
+        except Exception as e:
+            logging.error(f"An error occurred during the crew process: {e}")
+            logging.debug(traceback.format_exc())
+            raise
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
