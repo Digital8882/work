@@ -18,18 +18,19 @@ import time
 import traceback
 from html.parser import HTMLParser
 import builtins
+import re
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levellevelname)s - %(message)s')
 
 # Email configuration
-SMTP_SERVER = 'smtp-mail.outlook.com'
+SMTP_SERVER = 'smtp-mail.outlook.com''
 SMTP_PORT = 587
 SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork4"
+os.environ["LANGSMITH_PROJECT"] = "SL81"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -170,7 +171,7 @@ class HTMLToPDF(FPDF):
     def handle_data(self, data):
         data = data.strip()  # Strip leading/trailing whitespace
         if data:  # Skip unwanted tag
-            self.multi_cell(0, 7, txt=data)
+            self.write_formatted(data)
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
@@ -200,6 +201,16 @@ class HTMLToPDF(FPDF):
             self.ln(5)
         elif tag == 'li':  # Adjust spacing after list items
             self.ln(2)
+
+    def write_formatted(self, text):
+        parts = re.split(r'(\*\*.*?\*\*)', text)  # Split text by bold markers
+        for part in parts:
+            if part.startswith('**') and part.endswith('**'):
+                self.set_font("Arial", 'B', size=12)
+                self.multi_cell(0, 7, txt=part[2:-2])  # Remove ** markers
+                self.set_font("Arial", size=12)
+            else:
+                self.multi_cell(0, 7, txt=part)
 
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
