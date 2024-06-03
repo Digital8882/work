@@ -14,6 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -85,7 +86,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         project_crew = Crew(
             tasks=[new_task, icp_task, jtbd_task, pains_task],
             agents=[researcher, report_writer],
-            manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
+            manager_llm=ChatOpenAI(temperature=0, model="gpt-4"),
             max_rpm=8,
             process=Process.hierarchical,
             memory=True,
