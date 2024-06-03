@@ -7,7 +7,7 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-from pyairtable import Table
+from pyairtable import Api
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -28,7 +28,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork10"
+os.environ["LANGSMITH_PROJECT"] = "SLwork4"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -42,8 +42,9 @@ AIRTABLE_FIELDS = {
     'pains': 'fldyazmtByhtLBEds'
 }
 
-# Initialize Airtable table
-airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+# Initialize Airtable API and table
+airtable_api = Api(AIRTABLE_API_KEY)
+airtable_table = airtable_api.table(AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
@@ -55,7 +56,7 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     }
     try:
         logging.info(f"Sending data to Airtable: {data}")
-        record = airtable.create(data)
+        record = airtable_table.create(data)
         logging.info(f"Airtable response: {record}")
         return record['id']
     except Exception as e:
@@ -66,7 +67,7 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
 @traceable
 def retrieve_from_airtable(record_id):
     try:
-        record = airtable.get(record_id)
+        record = airtable_table.get(record_id)
         fields = record.get('fields', {})
         logging.info("Data retrieved from Airtable successfully")
         return (
