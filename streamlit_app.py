@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLw868"
+os.environ["LANGSMITH_PROJECT"] = "SLwork4"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -128,9 +128,9 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.info(f"Starting crew process, attempt {attempt + 1}")
             results = project_crew.kickoff()
             # Access task outputs directly
-            icp_output = str(icp_task.output.exported_output)
-            jtbd_output = str(jtbd_task.output.exported_output)
-            pains_output = str(pains_task.output.exported_output)
+            icp_output = icp_task.output.exported_output if hasattr(icp_task.output, 'exported_output') else "No ICP output"
+            jtbd_output = jtbd_task.output.exported_output if hasattr(jtbd_task.output, 'exported_output') else "No JTBD output"
+            pains_output = pains_task.output.exported_output if hasattr(pains_task.output, 'exported_output') else "No Pains output"
             logging.info("Crew process completed successfully")
             return icp_output, jtbd_output, pains_output
         except BrokenPipeError as e:
@@ -182,10 +182,14 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", 'B', size=14)
         elif tag == 'p':
             self.set_font("Arial", size=12)
-            self.ln(10)  # Add extra space for paragraphs
+            self.ln(5)  # Adjust space for paragraphs
         elif tag == 'li':
             self.set_x(10)  # Adjust left margin for list items
             self.set_font("Arial", size=12)
+        elif tag == 'ul' or tag == 'ol':
+            self.ln(5)  # Adjust spacing before list
+        elif tag == 'br':
+            self.ln(5)  # Line break
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
@@ -193,24 +197,21 @@ class HTMLToPDF(FPDF):
         if tag in ['b', 'h1', 'h2']:
             self.set_font("Arial", size=12)
         if tag == 'p':  # Adjust spacing after paragraphs
-            self.ln(10)
+            self.ln(5)
+        elif tag == 'li':  # Adjust spacing after list items
+            self.ln(2)
 
-# Generate PDF
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
     
-    pdf.write_html(icp_output)
-    
-    # Add space between sections
+    pdf.write_html(f"<h1>ICP Output</h1>{icp_output}")
     pdf.ln(10)
     
-    pdf.write_html(jtbd_output)
-    
-    # Add space between sections
+    pdf.write_html(f"<h1>JTBD Output</h1>{jtbd_output}")
     pdf.ln(10)
     
-    pdf.write_html(pains_output)
+    pdf.write_html(f"<h1>Pains Output</h1>{pains_output}")
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
