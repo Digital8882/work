@@ -60,7 +60,7 @@ def update_user_record(email):
     save_user_records(records)
 
 @traceable
-def send_to_airtable(email, opt_in, name, insights):
+def send_to_airtable(email, opt_in):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -86,7 +86,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     project_crew = Crew(
         tasks=[new_task, icp_task , jtbd_task, pains_task],
         agents=[researcher, report_writer],
-        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
+        manager_llm=ChatOpenAI(temperature=0, model="gpt-4"),
         max_rpm=8,
         process=Process.hierarchical,
         memory=True,
