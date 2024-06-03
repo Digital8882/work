@@ -16,9 +16,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 import requests
 import time
+import traceback
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
 SMTP_SERVER = 'smtpout.secureserver.net'
@@ -59,6 +60,7 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
         return record['id']
     except Exception as e:
         logging.error(f"Failed to update Airtable: {e}")
+        logging.debug(traceback.format_exc())
         return None
 
 @traceable
@@ -74,46 +76,47 @@ def retrieve_from_airtable(record_id):
         )
     except Exception as e:
         logging.error(f"Failed to retrieve data from Airtable: {e}")
+        logging.debug(traceback.format_exc())
         return None, None, None
 
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
-    try:
-        task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-        if selling_scope == "Locally":
-            task_description += f" Location: {location}."
-        
-        new_task = Task(description=task_description, expected_output="...")
+    task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
+    if selling_scope == "Locally":
+        task_description += f" Location: {location}."
     
-        project_crew = Crew(
-            tasks=[new_task, icp_task, jtbd_task, pains_task],
-            agents=[researcher, report_writer],
-            manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-            max_rpm=6,
-            process=Process.hierarchical,
-            memory=True,
-        )
-        
-        for attempt in range(retries):
-            try:
-                results = project_crew.kickoff()
-                break
-            except BrokenPipeError as e:
-                logging.error(f"BrokenPipeError occurred on attempt {attempt + 1}: {e}")
-                if attempt < retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                else:
-                    raise
-        
-        # Access task outputs directly
-        icp_output = str(icp_task.output.exported_output)
-        jtbd_output = str(jtbd_task.output.exported_output)
-        pains_output = str(pains_task.output.exported_output)
-    
-        return icp_output, jtbd_output, pains_output
-    except Exception as e:
-        logging.error(f"An error occurred during the crew process: {e}")
-        raise
+    new_task = Task(description=task_description, expected_output="...")
+
+    project_crew = Crew(
+        tasks=[new_task, icp_task, jtbd_task, pains_task],
+        agents=[researcher, report_writer],
+        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
+        max_rpm=5,
+        process=Process.hierarchical,
+    )
+
+    for attempt in range(retries):
+        try:
+            logging.info(f"Starting crew process, attempt {attempt + 1}")
+            results = project_crew.kickoff()
+            # Access task outputs directly
+            icp_output = str(icp_task.output.exported_output)
+            jtbd_output = str(jtbd_task.output.exported_output)
+            pains_output = str(pains_task.output.exported_output)
+            logging.info("Crew process completed successfully")
+            return icp_output, jtbd_output, pains_output
+        except BrokenPipeError as e:
+            logging.error(f"BrokenPipeError occurred on attempt {attempt + 1}: {e}")
+            logging.debug(traceback.format_exc())
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+                project_crew.cleanup()  # Ensure resources are cleaned up before retrying
+            else:
+                raise
+        except Exception as e:
+            logging.error(f"An error occurred during the crew process: {e}")
+            logging.debug(traceback.format_exc())
+            raise
 
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
@@ -169,11 +172,15 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     msg.attach(attachment)
     
     # Send the email
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, email, msg.as_string())
-    logging.info("Email sent successfully")
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, email, msg.as_string())
+        logging.info("Email sent successfully")
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+        logging.debug(traceback.format_exc())
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
@@ -266,6 +273,9 @@ def main():
                     st.error("Failed to send data to Airtable.")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
+                st.error(traceback.format_exc())
+                logging.error(f"An error occurred: {e}")
+                logging.debug(traceback.format_exc())
         else:
             st.error("Please fill in all the required fields.")
 
