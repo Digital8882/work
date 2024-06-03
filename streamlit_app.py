@@ -7,7 +7,6 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import io
 import os
-import json
 from datetime import datetime, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
@@ -23,7 +22,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork3"
+os.environ["LANGSMITH_PROJECT"] = "SLwork4"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -84,6 +83,10 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     
     results = project_crew.kickoff()
 
+    # Print the structure of results to understand it
+    print("Results structure:", results)
+
+    # Assuming results is a list of dictionaries
     icp_output = results[1]['output']
     jtbd_output = results[2]['output']
     pains_output = results[3]['output']
