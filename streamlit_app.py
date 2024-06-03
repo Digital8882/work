@@ -7,6 +7,7 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
+from pyairtable import Api
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -19,7 +20,7 @@ import traceback
 from bs4 import BeautifulSoup
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levellevelname)s - %(message)s')
 
 # Email configuration
 SMTP_SERVER = 'smtpout.secureserver.net'
@@ -28,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork44"
+os.environ["LANGSMITH_PROJECT"] = "SLwork4"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
