@@ -5,15 +5,18 @@ from langchain_openai import ChatOpenAI
 from langsmith import traceable
 from crewai import Crew, Process, Task
 from fpdf import FPDF
-import io
 import os
-from datetime import datetime, timedelta
 import smtplib
+import requests
+import logging
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-import requests
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 # Email configuration
 SMTP_SERVER = 'smtpout.secureserver.net'
@@ -22,7 +25,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork4"
+os.environ["LANGSMITH_PROJECT"] = "SLwork5"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -37,7 +40,7 @@ AIRTABLE_FIELDS = {
 }
 
 @traceable
-def send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output):
+def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -46,23 +49,35 @@ def send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output):
     data = {
         "fields": {
             "Email": email,
-            "Opt-in": opt_in,
             AIRTABLE_FIELDS['icp']: icp_output,
             AIRTABLE_FIELDS['jtbd']: jtbd_output,
             AIRTABLE_FIELDS['pains']: pains_output,
         }
     }
     response = requests.post(url, headers=headers, data=json.dumps(data))
-    return response.status_code, response.json()
+    if response.status_code == 200:
+        logging.info("Airtable updated successfully")
+        return response.json().get('id')
+    logging.error(f"Failed to update Airtable: {response.text}")
+    return None
 
 @traceable
-def get_from_airtable():
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
+def retrieve_from_airtable(record_id):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}"
     }
     response = requests.get(url, headers=headers)
-    return response.status_code, response.json()
+    if response.status_code == 200:
+        record = response.json().get('fields', {})
+        logging.info("Data retrieved from Airtable successfully")
+        return (
+            record.get(AIRTABLE_FIELDS['icp'], ''),
+            record.get(AIRTABLE_FIELDS['jtbd'], ''),
+            record.get(AIRTABLE_FIELDS['pains'], '')
+        )
+    logging.error(f"Failed to retrieve data from Airtable: {response.text}")
+    return None, None, None
 
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location):
@@ -73,7 +88,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     new_task = Task(description=task_description, expected_output="...")
 
     project_crew = Crew(
-        tasks=[new_task, icp_task , jtbd_task, pains_task],
+        tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4"),
         max_rpm=8,
@@ -83,13 +98,10 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     
     results = project_crew.kickoff()
 
-    # Print the structure of results to understand it
-    print("Results structure:", results)
-
-    # Assuming results is a list of dictionaries
-    icp_output = results[1]['output']
-    jtbd_output = results[2]['output']
-    pains_output = results[3]['output']
+    # Access task outputs directly
+    icp_output = str(icp_task.output.exported_output)
+    jtbd_output = str(jtbd_task.output.exported_output)
+    pains_output = str(pains_task.output.exported_output)
 
     return icp_output, jtbd_output, pains_output
 
@@ -151,6 +163,7 @@ def send_email(email, icp_output, jtbd_output, pains_output):
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, email, msg.as_string())
+    logging.info("Email sent successfully")
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
@@ -234,11 +247,25 @@ def main():
         with st.spinner('Processing... please keep the page open for 5 minutes until you receive an email with the report'):
             try:
                 icp_output, jtbd_output, pains_output = start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location)
-                send_to_airtable(email, opt_in, icp_output, jtbd_output, pains_output)
-                send_email(email, icp_output, jtbd_output, pains_output)
-                st.success("The ICP has been generated and sent to your email.")
-                download_button(icp_output, jtbd_output, pains_output)
+                record_id = send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                if record_id:
+                    st.success("Airtable updated successfully!")
+
+                    # Retrieve from Airtable using the record ID
+                    retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output = retrieve_from_airtable(record_id)
+                    
+                    if retrieved_icp_output and retrieved_jtbd_output:
+                        # Generate PDF
+                        pdf_content = generate_pdf(retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output)
+                        send_email(email, retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output)
+                        st.success("The ICP has been generated and sent to your email.")
+                        download_button(retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output)
+                    else:
+                        st.error("Failed to retrieve data from Airtable.")
+                else:
+                    st.error("Failed to update Airtable.")
             except Exception as e:
+                logging.error(f"An error occurred: {e}")
                 st.error(f"An error occurred: {e}")
 
 def validate_input(email, product_service, price, payment_frequency, selling_scope, location):
