@@ -25,7 +25,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork9"
+os.environ["LANGSMITH_PROJECT"] = "SLwork10"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -99,6 +99,9 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         pains_output = str(pains_task.output.exported_output)
     
         return icp_output, jtbd_output, pains_output
+    except BrokenPipeError as e:
+        logging.error(f"BrokenPipeError occurred: {e}")
+        raise
     except Exception as e:
         logging.error(f"An error occurred during the crew process: {e}")
         raise
