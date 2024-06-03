@@ -15,7 +15,7 @@ icp_task = Task(
 
 jtbd_task = Task(
     description="Job To Be Done analysis for the product.",
-    expected_output="""<h1>Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 200 words in markdown and include:</h1>
+    expected_output="""<h1>Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 200 words and include:</h1>
             <h2>- A title</h2>
             <h2>- An explanation of what JTBD are and why it is essential to identify them</h2>
             <h2>- At least 8 JTBD identified through the simulated interview, each described in detail, 4-5 of these should be related to the product or service and the rest can be outside the scope of the offering but are still important to the customer</h2>
