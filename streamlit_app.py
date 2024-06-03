@@ -88,7 +88,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     new_task = Task(description=task_description, expected_output="...")
 
     project_crew = Crew(
-        tasks=[new_task, , jtbd_task, pains_task],
+        tasks=[new_task, icp_task , jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
         max_rpm=8,
