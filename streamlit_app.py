@@ -28,7 +28,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork2"
+os.environ["LANGSMITH_PROJECT"] = "SLwork10"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -93,6 +93,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
         max_rpm=5,
         process=Process.hierarchical,
+        memory=True,
     )
 
     for attempt in range(retries):
@@ -110,7 +111,6 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
-                project_crew.cleanup()  # Ensure resources are cleaned up before retrying
             else:
                 raise
         except Exception as e:
