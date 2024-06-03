@@ -1,6 +1,6 @@
 import streamlit as st
 from SL_agents import researcher, report_writer
-from SL_tasks import icp_task
+from SL_tasks import icp_task jtbd_task pains_task
 from langchain_openai import ChatOpenAI
 from crewai import Crew, Process, Task
 from fpdf import FPDF
@@ -80,10 +80,10 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     new_task = Task(description=task_description, expected_output="...")
 
     project_crew = Crew(
-        tasks=[new_task, icp_task],
+        tasks=[new_task, , jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=2,
+        max_rpm=8,
         process=Process.hierarchical,
         memory=True,
     )
