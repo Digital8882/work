@@ -7,13 +7,13 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
+from pyairtable import Table
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from pyairtable import Table
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +25,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLwork8"
+os.environ["LANGSMITH_PROJECT"] = "SLwork9"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -39,7 +39,8 @@ AIRTABLE_FIELDS = {
     'pains': 'PainsfldyazmtByhtLBEds'
 }
 
-table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
+# Initialize Airtable table
+airtable = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)
 
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
@@ -50,9 +51,9 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
         AIRTABLE_FIELDS['pains']: pains_output,
     }
     try:
-        record = table.create(data)
+        record = airtable.create(data)
         logging.info("Airtable updated successfully")
-        return record.get('id')
+        return record['id']
     except Exception as e:
         logging.error(f"Failed to update Airtable: {e}")
         return None
@@ -60,7 +61,7 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
 @traceable
 def retrieve_from_airtable(record_id):
     try:
-        record = table.get(record_id)
+        record = airtable.get(record_id)
         fields = record.get('fields', {})
         logging.info("Data retrieved from Airtable successfully")
         return (
@@ -84,7 +85,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         project_crew = Crew(
             tasks=[new_task, icp_task, jtbd_task, pains_task],
             agents=[researcher, report_writer],
-            manager_llm=ChatOpenAI(temperature=0, model="gpt-4"),
+            manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
             max_rpm=8,
             process=Process.hierarchical,
             memory=True,
@@ -98,9 +99,6 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         pains_output = str(pains_task.output.exported_output)
     
         return icp_output, jtbd_output, pains_output
-    except BrokenPipeError as e:
-        logging.error(f"BrokenPipeError occurred: {e}")
-        raise
     except Exception as e:
         logging.error(f"An error occurred during the crew process: {e}")
         raise
@@ -227,71 +225,37 @@ def main():
 
     product_service = st.text_input("Product/Service being sold")
     
-    col1, col2 = st.columns(2)
-    price = col1.number_input("Price", min_value=0, step=1, format="%d")
-    currency = col2.selectbox("Currency", ["USD", "EUR", "GBP", "INR", "AUD", "CAD", "JPY", "CNY", "Other"])
+    col3, col4 = st.columns(2)
+    price = col3.text_input("Price")
+    currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
     
-    payment_frequency = st.selectbox("Payment Frequency", ["Select an option", "One-time", "Daily", "Weekly", "Monthly", "Quarterly", "Annually"])
-    
-    col1, col2 = st.columns(2)
-    selling_scope = col1.selectbox("Selling Scope", ["Select an option", "Locally", "Nationally", "Internationally"])
-    location = col2.text_input("Location (if selling locally)")
+    col5, col6 = st.columns(2)
+    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"])
+    selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
 
-    opt_in = st.checkbox('Allow Swift Launch to send me valuable content (we will never share your data)', value=True)
+    location = ""
+    if selling_scope == "Locally":
+        location = st.text_input("Location")
 
     if st.button("Submit"):
-        if not validate_input(email, product_service, price, payment_frequency, selling_scope, location):
-            st.error("Please fill in all fields correctly.")
-            return
-
-        with st.spinner('Processing... please keep the page open for 5 minutes until you receive an email with the report'):
+        if email and product_service and price:
             try:
-                icp_output, jtbd_output, pains_output = start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location)
+                with st.spinner("Generating customer profile..."):
+                    icp_output, jtbd_output, pains_output = start_crew_process(
+                        email, product_service, price, currency, payment_frequency, selling_scope, location)
+                
                 record_id = send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                
                 if record_id:
-                    st.success("Airtable updated successfully!")
-
-                    # Retrieve from Airtable using the record ID
-                    retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output = retrieve_from_airtable(record_id)
-                    
-                    if retrieved_icp_output and retrieved_jtbd_output:
-                        # Generate PDF
-                        pdf_content = generate_pdf(retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output)
-                        send_email(email, retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output)
-                        st.success("The ICP has been generated and sent to your email.")
-                        download_button(retrieved_icp_output, retrieved_jtbd_output, retrieved_pains_output)
-                    else:
-                        st.error("Failed to retrieve data from Airtable.")
+                    st.success("Data successfully sent to Airtable!")
+                    send_email(email, icp_output, jtbd_output, pains_output)
+                    st.success("Email sent successfully!")
                 else:
-                    st.error("Failed to update Airtable.")
+                    st.error("Failed to send data to Airtable.")
             except Exception as e:
-                logging.error(f"An error occurred: {e}")
                 st.error(f"An error occurred: {e}")
+        else:
+            st.error("Please fill in all the required fields.")
 
-def validate_input(email, product_service, price, payment_frequency, selling_scope, location):
-    if "@" not in email or len(email) == 0:
-        return False
-    if len(product_service) == 0:
-        return False
-    if price <= 0:
-        return False
-    if payment_frequency == "Select an option":
-        return False
-    if selling_scope == "Select an option":
-        return False
-    if selling_scope == "Locally" and len(location) == 0:
-        return False
-    return True
-
-def download_button(icp_output, jtbd_output, pains_output):
-    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)
-
-    st.download_button(
-        label="Download Result as PDF",
-        data=pdf_content,
-        file_name='SwiftLaunch_ICP.pdf',
-        mime='application/pdf',
-    )
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
