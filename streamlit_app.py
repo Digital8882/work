@@ -2,6 +2,7 @@ import streamlit as st
 from SL_agents import researcher, report_writer
 from SL_tasks import icp_task jtbd_task pains_task
 from langchain_openai import ChatOpenAI
+from langsmith import traceable
 from crewai import Crew, Process, Task
 from fpdf import FPDF
 import io
@@ -20,6 +21,11 @@ SMTP_SERVER = 'smtpout.secureserver.net'
 SMTP_PORT = 587
 SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
+
+os.environ["LANGSMITH_TRACING_V2"] = "true"
+os.environ["LANGSMITH_PROJECT"] = "SLwork"
+os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGSMITH_API_KEY"] = "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"
 
 # Airtable configuration
 AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
@@ -52,7 +58,8 @@ def update_user_record(email):
     records = load_user_records()
     records[email] = datetime.now().isoformat()
     save_user_records(records)
-
+    
+@traceable
 def send_to_airtable(email, opt_in):
     url = f'https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}'
     headers = {
@@ -72,6 +79,7 @@ def send_to_airtable(email, opt_in):
     response = requests.post(url, headers=headers, json=payload)
     response.raise_for_status()
 
+@traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location):
     task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
     if selling_scope == "Locally":
@@ -90,7 +98,8 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
     
     result = project_crew.kickoff()
     return result
-
+    
+@traceable
 def generate_pdf(result):
     pdf = FPDF()
     pdf.add_page()
@@ -116,6 +125,7 @@ def generate_pdf(result):
     
     return pdf.output(dest="S").encode("latin1")
 
+@traceable
 def send_email(email, result):
     pdf_content = generate_pdf(result)
     
