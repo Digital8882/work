@@ -4,7 +4,7 @@ from SL_tasks import icp_task, jtbd_task, pains_task
 from langchain_openai import ChatOpenAI
 from langsmith import traceable
 from crewai import Crew, Process, Task
-from fpdf import FPDF
+from fpdf import FPDF, HTMLMixin
 import os
 import smtplib
 import requests
