@@ -49,14 +49,46 @@ jtbd_task = Task(
 )
 
 pains_task = Task(
-    description="Identify customer pains.",
-    expected_output="""Synthesize findings into a report of approximately 250 words, including:
-            - A title
-            - An overview of the key pain points experienced by the customers, with a detailed analysis of these issues
-            - Specific instances of negative experiences customers have had with competing solutions, including direct quotes from customer feedback or focus group discussions
-            - Potential objections to current or proposed offerings based on trends observed in customer feedback and market research
-            Pains should be related to the jobs-to-be-done (JTBD)
-            Each section should begin with an overview followed by detailed examples. 
-            Format the document as a concise, structured report with headings, subheadings, and bullet points for easy reference and sharing among team members.
-            Conclude the report with a summary that highlights key findings and implications for strategy."""
-)
+    description=f"""Your task is to conduct a simulated interview with an ideal customer profile on behalf of a business selling a specific product or service, in order to identify their Jobs to Be Done (JTBD) and explore competing solutions.
+            "To generate the simulated interview and JTBD report, consider the following:"
+            "- Analyze the provided ideal customer profile to understand their characteristics, goals, and decision-making process"
+            "- Develop a set of open-ended questions that will help uncover the customer's JTBD related to the product or service category"
+            "- Explore the ways customers are currently solving their problems and what alternatives they consider"
+            "- Identify the factors that determine the customer's decision when choosing a solution"
+            "- Examine the customer's experience with current solutions and alternatives, including their satisfaction levels, perceived benefits, and limitations"
+            "- Prioritize the identified JTBD based on their importance and impact on the customer's decision-making process"
+            "- Simulate the customer's responses based on your understanding of their profile and the market"
+            "- Synthesize the findings into a clear and concise report that highlights the key JTBD and actionable recommendations"
+            "The simulated interview and report should be written in a professional, analytical tone, ensuring clarity and accessibility necessary for understanding by team members across different functions.""",
+        expected_output=f"""Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 1000 words in markdown and include:
+            "- A title"
+            "- An explanation of what JTBD are and why it is essential to identify them"
+            "- At least 8 JTBD identified through the simulated interview, each described in detail, 4-5 of these should be related to the product or service and the rest can be outside the scope of the offering but are still important to the customer"
+            "- A prioritized list of the identified JTBD based on their importance and impact on the customer's decision-making process, including the reasoning behind the prioritization"
+            "- An exploration of the ways customers are currently solving their problems and what alternatives they consider"
+            "- An examination of the customer's experience with current solutions and alternatives, including their satisfaction levels, perceived benefits, and limitations"
+            "- A discussion of the factors that determine the customer's decision when choosing a solution"
+            "- Relevant quotes or examples from the simulated interview to support the findings"
+            "Organize the report into the following sections:"
+            "1. Introduction to Jobs to Be Done"
+            "2. Identified Jobs to Be Done"
+            "- JTBD 1"
+            "- JTBD 2"
+            "- JTBD 3"
+            "- JTBD 4"
+            "- JTBD 5"
+            "3. Prioritized Jobs to Be Done"
+            "4. Current Solutions and Alternatives"
+            "5. Experience with Competing Solutions"
+            "6. Decision-Making Factors"
+            "7. Key Takeaways and Actionable Recommendations"
+            "Use headings, subheadings, bullet points, and numbered lists to structure the report in an easy-to-read format."
+            "Explain how gathering this information through interviews helps businesses:"
+            "- Refine their product offering"
+            "- Target the right audience"
+            "- Adjust their marketing and development strategies to better achieve product-market fit"
+            "- Engage in a process of continuous learning and iteration, using customer feedback to make informed decisions"
+            "Conclude the report with a summary of the key findings and specific, actionable recommendations for the business based on the identified JTBD and customer insights."
+            "Use a professional, analytical tone throughout the report, ensuring clarity and accessibility necessary for understanding by team members across different functions."
+            "If insufficient information is provided about the ideal customer profile or product/service, make reasonable assumptions or provide generic examples, while clearly stating the limitations.""",
+    )
