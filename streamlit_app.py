@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL06l91"
+os.environ["LANGSMITH_PROJECT"] = "SL06l91o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -224,8 +224,14 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     
     return pdf_output
 
+
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
+    # Print the outputs for debugging purposes
+    print("ICP Output:", icp_output)
+    print("JTBD Output:", jtbd_output)
+    print("Pains Output:", pains_output)
+
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
@@ -258,6 +264,7 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     except Exception as e:
         logging.error(f"Failed to send email: {e}")
         logging.debug(traceback.format_exc())
+
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
