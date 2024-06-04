@@ -18,6 +18,8 @@ import time
 import traceback
 import builtins
 import re
+import urllib.parse  # For URL encoding
+from html.parser import HTMLParser
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -146,30 +148,69 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             raise
 
 @traceable
-def generate_pdf(result):
-    pdf = FPDF()
-    pdf.add_page()
+class HTMLToPDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.add_page()
+        self.set_font("Arial", size=12)
+        self.tag_stack = []
+
+    def header(self):
+        self.set_font("Arial", 'B', 12)
+        self.set_text_color(255, 165, 0)  # Orange color
+        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
+        self.ln(20)
+
+    def write_html(self, html):
+        parser = HTMLParser()
+        parser.handle_data = self.handle_data
+        parser.handle_starttag = self.handle_starttag
+        parser.handle_endtag = self.handle_endtag
+        parser.feed(html)
+
+    def handle_data(self, data):
+        data = data.strip()  # Strip leading/trailing whitespace
+        if data and data != '`html':  # Skip unwanted tag
+            self.multi_cell(0, 7, txt=data)
+
+    def handle_starttag(self, tag, attrs):
+        self.tag_stack.append(tag)
+        if tag == 'b':
+            self.set_font("Arial", 'B', size=12)
+        elif tag == 'h1':
+            self.set_font("Arial", 'B', size=16)
+        elif tag == 'h2':
+            self.set_font("Arial", 'B', size=14)
+        elif tag == 'p':
+            self.set_font("Arial", size=12)
+
+    def handle_endtag(self, tag):
+        if tag in self.tag_stack:
+            self.tag_stack.remove(tag)
+        if tag in ['b', 'h1', 'h2']:
+            self.set_font("Arial", size=12)
+        if tag == 'p':  # Add an extra newline after paragraphs
+            self.ln(10)
+
+# Generate PDF
+@traceable
+def generate_pdf(research_output, write_report_output):
+    pdf = HTMLToPDF()
     
-    # Set the title
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
+    pdf.write_html(research_output)
     
-    # Add the result content with better formatting
-    pdf.set_font("Arial", size=12)
+    # Add space between sections
+    pdf.ln(10)
     
-    # Split the result by lines
-    lines = result.split('\n')
+    pdf.write_html(write_report_output)
     
-    for line in lines:
-        if "**" in line:  # Detect headings and subheadings
-            pdf.set_font("Arial", 'B', 12)
-            line = line.replace("**", "")
-        else:
-            pdf.set_font("Arial", size=12)
-        
-        pdf.multi_cell(0, 8, line.strip())  # Use tighter line spacing
+    pdf_output = pdf.output(dest="S").encode("latin1")
     
-    return pdf.output(dest="S").encode("latin1")
+    # Save a copy locally for inspection
+    with open("report_debug.pdf", "wb") as f:
+        f.write(pdf_output)
+    
+    return pdf_output
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
