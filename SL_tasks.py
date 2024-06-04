@@ -15,7 +15,7 @@ icp_task = Task(
             "If the majority of the target customers are men, use a male example in the profile. If the majority are women, use a female example."
             "The ICP should be written in a professional, analytical tone, with clarity and accessibility necessary for understanding by team members across different functions."
             "Remember to regularly review and update the ICP based on new customer data, market trends, and product changes.""",
-        expected_output=f"""Create an ideal customer profile document of approximately 400 words , including:
+        expected_output=f"""In Plain text. Create an ideal customer profile document of approximately 400 words , including:
             "a story-like format that is easy to understand and remember. For example:
             "Meet [Name], a [age]-year-old [gender] who works as a [occupation] in [location]. [Name] values [values] and enjoys [interests/hobbies] in their free time. As a [personality trait] person, [Name] struggles with [pain point/challenge] when it comes to [product/service category]. They aspire to [goal/desire] and believe that the right [product/service] can help them achieve this. [Name] prefers to communicate via [preferred channels] and often consumes media through [media habits]. When considering a purchase, [Name] typically [decision-making process description] and their main concerns are [objections/hesitations]."
             "- A title featuring the memorable ICP name"
@@ -47,7 +47,7 @@ jtbd_task = Task(
             "- Simulate the customer's responses based on your understanding of their profile and the market"
             "- Synthesize the findings into a clear and concise report that highlights the key JTBD and actionable recommendations"
             "The simulated interview and report should be written in a professional, analytical tone, ensuring clarity and accessibility necessary for understanding by team members across different functions.""",
-        expected_output=f"""Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 1000 words in markdown and include:
+        expected_output=f"""In Plain text. Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 1000 words in markdown and include:
             "- A title"
             "- An explanation of what JTBD are and why it is essential to identify them"
             "- At least 8 JTBD identified through the simulated interview, each described in detail, 4-5 of these should be related to the product or service and the rest can be outside the scope of the offering but are still important to the customer"
@@ -94,7 +94,7 @@ pains_task = Task(
             "- Train customer service teams to address common objections and provide better support"
             "- Inform overall business strategy to better meet customer needs and expectations"
             "This report is intended for internal use by the specified teams to inform strategy and improve customer satisfaction.""",
-        expected_output=f"""Synthesize findings into a report of approximately 1200 words, including:  
+        expected_output=f"""In Plain text. Synthesize findings into a report of approximately 1200 words, including:  
             "- A title"
             "- An overview of the key pain points experienced by the customers, with a detailed analysis of these issues"
             "- Specific instances of negative experiences customers have had with competing solutions, including direct quotes from customer feedback or focus group discussions"
@@ -105,7 +105,7 @@ pains_task = Task(
             "2. Previous Bad Experiences"
             "3. Possible Objections"
             "Pains should be related to the jobs-to-be-done (JTBD)"
-            "Each section should begin with an overview followed by detailed examples. Include headings, sub-headings, bullet points, and numbered lists to structure the report in an easy-to-read format."
+            "Each section should begin with an overview followed by detailed examples. Include headings, sub-headings, bullet points, and numbered lists to structure the report in an easy-to-read format. Only make headings and subheadings in bold"
             "Conclude the report with a summary that highlights key findings and implications for strategy."
             "Maintain a professional, analytical tone throughout the report, ensuring clarity and accessibility necessary for understanding by team members across different functions."
             "If insufficient information is provided about the business, products/services, or ideal customer profiles, make reasonable assumptions or provide generic examples, while clearly stating the limitations.""",
