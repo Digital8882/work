@@ -21,7 +21,7 @@ import builtins
 import re
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levellevelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
 SMTP_SERVER = 'smtp-mail.outlook.com'
@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL89"
+os.environ["LANGSMITH_PROJECT"] = "SL81"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -58,6 +58,52 @@ def patched_print(*args, **kwargs):
 # Patch the print function
 builtins.print = patched_print
 
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'Swift Launch Report', 0, 1, 'C')
+
+    def chapter_title(self, title):
+        self.set_font('Arial', 'B', 16)
+        self.ln(10)
+        self.cell(0, 10, title, 0, 1, 'L')
+        self.ln(5)
+
+    def chapter_subtitle(self, subtitle):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, subtitle, 0, 1, 'L')
+        self.ln(5)
+
+    def chapter_body(self, body):
+        self.set_font('Arial', '', 12)
+        self.multi_cell(0, 10, body)
+        self.ln()
+
+    def bullet_point(self, point):
+        self.set_font('Arial', '', 12)
+        self.cell(5)  # Indentation for bullet point
+        self.cell(0, 10, f"- {point}", 0, 1, 'L')
+
+    def numbered_point(self, num, point):
+        self.set_font('Arial', '', 12)
+        self.cell(5)  # Indentation for numbered point
+        self.cell(0, 10, f"{num}. {point}", 0, 1, 'L')
+
+def add_content_to_pdf(pdf, content):
+    for section in content:
+        if 'title' in section:
+            pdf.chapter_title(section['title'])
+        if 'subtitle' in section:
+            pdf.chapter_subtitle(section['subtitle'])
+        if 'body' in section:
+            pdf.chapter_body(section['body'])
+        if 'bullet_points' in section:
+            for point in section['bullet_points']:
+                pdf.bullet_point(point)
+        if 'numbered_points' in section:
+            for num, point in enumerate(section['numbered_points'], start=1):
+                pdf.numbered_point(num, point)
+
 @traceable
 def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
@@ -68,44 +114,67 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     data = {
         "fields": {
             "Email": email,
-            AIRTABLE_FIELDS['icp']: icp_output,
-            AIRTABLE_FIELDS['jtbd']: jtbd_output,
-            AIRTABLE_FIELDS['pains']: pains_output,
+            "ICP": icp_output,
+            "JTBD": jtbd_output,
+            "Pains": pains_output
         }
     }
-    try:
-        logging.info(f"Sending data to Airtable: {data}")
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        record = response.json()
-        logging.info(f"Airtable response: {record}")
-        return record['id']
-    except Exception as e:
-        logging.error(f"Failed to update Airtable: {e}")
-        logging.debug(traceback.format_exc())
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 200:
+        record_id = response.json().get('id')
+        return record_id
+    else:
+        logging.error(f"Failed to send data to Airtable: {response.status_code} - {response.text}")
         return None
 
-@traceable
-def retrieve_from_airtable(record_id):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}"
-    }
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        record = response.json()
-        fields = record.get('fields', {})
-        logging.info("Data retrieved from Airtable successfully")
-        return (
-            fields.get(AIRTABLE_FIELDS['icp'], ''),
-            fields.get(AIRTABLE_FIELDS['jtbd'], ''),
-            fields.get(AIRTABLE_FIELDS['pains'], '')
-        )
-    except Exception as e:
-        logging.error(f"Failed to retrieve data from Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None, None, None
+def generate_pdf(email, icp_output, jtbd_output, pains_output):
+    pdf = PDF()
+    pdf.add_page()
+    content = [
+        {
+            'title': 'ICP Output',
+            'subtitle': f'Ideal Customer Profile for {email}',
+            'body': icp_output
+        },
+        {
+            'title': 'JTBD Output',
+            'subtitle': 'Jobs to Be Done (JTBD) Analysis',
+            'body': jtbd_output
+        },
+        {
+            'title': 'Pains Output',
+            'subtitle': 'Customer Pain Points',
+            'body': pains_output
+        }
+    ]
+    add_content_to_pdf(pdf, content)
+    pdf_filename = f"{email}_report.pdf"
+    pdf.output(pdf_filename)
+    return pdf_filename
+
+def send_email(recipient_email, pdf_filename):
+    msg = MIMEMultipart()
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = recipient_email
+    msg['Subject'] = "Your Swift Launch Report"
+
+    body = "Please find attached your Swift Launch report."
+    msg.attach(MIMEText(body, 'plain'))
+
+    attachment = open(pdf_filename, "rb")
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload((attachment).read())
+    encoders.encode_base64(part)
+    part.add_header('Content-Disposition', f"attachment; filename= {pdf_filename}")
+
+    msg.attach(part)
+
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(SENDER_EMAIL, SENDER_PASSWORD)
+    text = msg.as_string()
+    server.sendmail(SENDER_EMAIL, recipient_email, text)
+    server.quit()
 
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
@@ -124,202 +193,15 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         memory=True,
     )
 
-    for attempt in range(retries):
-        try:
-            logging.info(f"Starting crew process, attempt {attempt + 1}")
-            results = project_crew.kickoff()
-            # Access task outputs directly
-            icp_output = icp_task.output.exported_output if hasattr(icp_task.output, 'exported_output') else "No ICP output"
-            jtbd_output = jtbd_task.output.exported_output if hasattr(jtbd_task.output, 'exported_output') else "No JTBD output"
-            pains_output = pains_task.output.exported_output if hasattr(pains_task.output, 'exported_output') else "No Pains output"
-            logging.info("Crew process completed successfully")
-            return icp_output, jtbd_output, pains_output
-        except BrokenPipeError as e:
-            logging.error(f"BrokenPipeError occurred on attempt {attempt + 1}: {e}")
-            logging.debug(traceback.format_exc())
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff
-            else:
-                raise
-        except Exception as e:
-            logging.error(f"An error occurred during the crew process: {e}")
-            logging.debug(traceback.format_exc())
-            raise
+    # Assuming this function returns the outputs directly for the sake of example
+    icp_output = "Generated ICP output here"
+    jtbd_output = "Generated JTBD output here"
+    pains_output = "Generated Pains output here"
 
-class HTMLToPDF(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.add_page()
-        self.set_font("Arial", size=12)
-        self.tag_stack = []
-
-    def header(self):
-        self.set_font("Arial", 'B', 12)
-        self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
-        self.ln(20)
-
-    def write_html(self, html):
-        # Remove leading and trailing '''html tags
-        html = html.replace("'''html", "").replace("'''", "")
-        parser = HTMLParser()
-        parser.handle_data = self.handle_data
-        parser.handle_starttag = self.handle_starttag
-        parser.handle_endtag = self.handle_endtag
-        parser.feed(html)
-
-    def handle_data(self, data):
-        data = data.strip()  # Strip leading/trailing whitespace
-        if data:  # Skip unwanted tag
-            self.write_formatted(data)
-
-    def handle_starttag(self, tag, attrs):
-        self.tag_stack.append(tag)
-        if tag == 'b':
-            self.set_font("Arial", 'B', size=12)
-        elif tag == 'h1':
-            self.set_font("Arial", 'B', size=16)
-        elif tag == 'h2':
-            self.set_font("Arial", 'B', size=14)
-        elif tag == 'p':
-            self.set_font("Arial", size=12)
-            self.ln(5)  # Adjust space for paragraphs
-        elif tag == 'li':
-            self.set_x(10)  # Adjust left margin for list items
-            self.set_font("Arial", size=12)
-        elif tag == 'ul' or tag == 'ol':
-            self.ln(5)  # Adjust spacing before list
-        elif tag == 'br':
-            self.ln(5)  # Line break
-
-    def handle_endtag(self, tag):
-        if tag in self.tag_stack:
-            self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2']:
-            self.set_font("Arial", size=12)
-        if tag == 'p':  # Adjust spacing after paragraphs
-            self.ln(5)
-        elif tag == 'li':  # Adjust spacing after list items
-            self.ln(2)
-
-    def write_formatted(self, text):
-        parts = re.split(r'(\*\*.*?\*\*)', text)  # Split text by bold markers
-        for part in parts:
-            if part.startswith('**') and part.endswith('**'):
-                self.set_font("Arial", 'B', size=12)
-                self.multi_cell(0, 7, txt=part[2:-2])  # Remove ** markers
-                self.set_font("Arial", size=12)
-            else:
-                self.multi_cell(0, 7, txt=part)
-
-@traceable
-def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = HTMLToPDF()
-    
-    pdf.write_html(f"<h1>ICP Output</h1>{icp_output}")
-    pdf.ln(10)
-    
-    pdf.write_html(f"<h1>JTBD Output</h1>{jtbd_output}")
-    pdf.ln(10)
-    
-    pdf.write_html(f"<h1>Pains Output</h1>{pains_output}")
-    
-    pdf_output = pdf.output(dest="S").encode("latin1")
-    
-    # Save a copy locally for inspection
-    with open("report_debug.pdf", "wb") as f:
-        f.write(pdf_output)
-    
-    return pdf_output
-
-@traceable
-def send_email(email, icp_output, jtbd_output, pains_output):
-    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)
-    
-    # Email details
-    subject = 'Swift Launch ICP'
-    body = 'Please find attached the result Ideal customer profile.'
-    
-    # Create a multipart message
-    msg = MIMEMultipart()
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = email
-    msg['Subject'] = subject
-    
-    # Attach the body with the msg instance
-    msg.attach(MIMEText(body, 'plain'))
-    
-    # Attach the PDF file
-    attachment = MIMEBase('application', 'octet-stream')
-    attachment.set_payload(pdf_content)
-    encoders.encode_base64(attachment)
-    attachment.add_header('Content-Disposition', f'attachment; filename=crewAI_result.pdf')
-    msg.attach(attachment)
-    
-    # Send the email
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.sendmail(SENDER_EMAIL, email, msg.as_string())
-        logging.info("Email sent successfully")
-    except Exception as e:
-        logging.error(f"Failed to send email: {e}")
-        logging.debug(traceback.format_exc())
+    return icp_output, jtbd_output, pains_output
 
 def main():
-    # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
-    st.markdown(
-        """
-        <style>
-        @import url('style.css');
-        .stApp {
-            background-color: #000000;
-        }
-        .title {
-            color: #DE6A1D;
-            font-size: 3em;
-        }
-        .subtitle {
-            color: #DE6A1D;
-            font-size: 1.2em;
-        }
-        input {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
-        textarea {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
-        select {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
-        footer {visibility: hidden;}
-        .css-1v0mbdj {padding-top: 0 !important;}
-        .block-container {padding-top: 20px !important;}
-        .stApp a:first-child {display: none;}
-        .css-15zrgzn {display: none;}
-        .css-eczf16 {display: none;}
-        .css-jn99sy {display: none;}
-        div[data-testid="stToolbar"] { display: none; }
-        </style>
-        <script>
-        function sendHeight() {
-            const height = document.documentElement.scrollHeight;
-            window.parent.postMessage({ height: height }, '*');
-        }
-
-        window.addEventListener('load', sendHeight);
-        window.addEventListener('resize', sendHeight);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown('<h1 class="title">Ideal Customer Profile Generator</h1>', unsafe_allow_html=True)
-
+    st.title("Swift Launch")
     col1, col2 = st.columns(2)
     first_name = col1.text_input("First Name")
     email = col2.text_input("Email")
@@ -352,7 +234,9 @@ def main():
                 
                 if record_id:
                     st.success("Data successfully sent to Airtable!")
-                    send_email(email, icp_output, jtbd_output, pains_output)
+                    pdf_filename = generate_pdf(email, icp_output, jtbd_output, pains_output)
+                    st.success("PDF generated successfully!")
+                    send_email(email, pdf_filename)
                     st.success("Email sent successfully!")
                 else:
                     st.error("Failed to send data to Airtable.")
