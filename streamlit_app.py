@@ -194,15 +194,19 @@ class HTMLToPDF(FPDF):
 
 # Generate PDF
 @traceable
-def generate_pdf(research_output, write_report_output):
+def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
     
-    pdf.write_html(research_output)
+    pdf.write_html(icp_output)
     
     # Add space between sections
     pdf.ln(10)
     
-    pdf.write_html(write_report_output)
+    pdf.write_html(jtbd_output)
+    
+    pdf.ln(10)
+    
+    pdf.write_html(pains_output)
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
