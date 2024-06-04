@@ -47,7 +47,7 @@ jtbd_task = Task(
             "- Simulate the customer's responses based on your understanding of their profile and the market"
             "- Synthesize the findings into a clear and concise report that highlights the key JTBD and actionable recommendations"
             "The simulated interview and report should be written in a professional, analytical tone, ensuring clarity and accessibility necessary for understanding by team members across different functions.",
-    expected_output=f"In html. Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 400 words  and include:"
+    expected_output=f"In html. Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 800 words  and include:"
             "- A title"
             "- An explanation of what JTBD are and why it is essential to identify them"
             "- At least 8 JTBD identified through the simulated interview, each described in detail, 4-5 of these should be related to the product or service and the rest can be outside the scope of the offering but are still important to the customer"
