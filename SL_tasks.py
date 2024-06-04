@@ -58,5 +58,5 @@ pains_task = Task(
             Pains should be related to the jobs-to-be-done (JTBD)
             Each section should begin with an overview followed by detailed examples. 
             Format the document as a concise, structured report with headings, subheadings, and bullet points for easy reference and sharing among team members.
-            <p>Conclude the report with a summary that highlights key findings and implications for strategy."""
+            Conclude the report with a summary that highlights key findings and implications for strategy."""
 )
