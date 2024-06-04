@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL07681"
+os.environ["LANGSMITH_PROJECT"] = "SL076481"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -145,43 +145,26 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
-@traceable
+class PDF(FPDF, HTMLMixin):
+    pass
+
 def generate_pdf(result):
-    pdf = FPDF()
+    pdf = PDF()
     pdf.add_page()
-    
+
     # Set the title
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
     
-    # Add the result content with better formatting
+    # Add the result content with HTML formatting
     pdf.set_font("Arial", size=12)
     
-    # Split the result by lines
-    lines = result.split('\n')
+    # Use HTML tags to define bold text
+    html = result.replace("**", "<b>").replace("**", "</b>")
     
-    for line in lines:
-        if line.strip().startswith("**") and line.strip().endswith("**"):
-            pdf.set_font("Arial", 'B', 12)
-            line = line.replace("**", "")
-        elif "**" in line:
-            # Handling inline bold text
-            parts = line.split("**")
-            for i, part in enumerate(parts):
-                if i % 2 == 1:
-                    pdf.set_font("Arial", 'B', 12)
-                    pdf.multi_cell(0, 8, part)
-                else:
-                    pdf.set_font("Arial", size=12)
-                    pdf.multi_cell(0, 8, part)
-            continue  # Skip the regular line processing
-        else:
-            pdf.set_font("Arial", size=12)
-        
-        pdf.multi_cell(0, 8, line.strip())  # Use tighter line spacing
+    pdf.write_html(html)
     
     return pdf.output(dest="S").encode("latin1")
-
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
