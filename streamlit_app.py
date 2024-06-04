@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL060091"
+os.environ["LANGSMITH_PROJECT"] = "SL06l91"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -175,7 +175,7 @@ class HTMLToPDF(FPDF):
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
         if tag in ['b', 'h1', 'h2', 'h3']:
-            self.ln(10)  # Add space before headers and bold text
+            self.ln(5)  # Reduce space before headers and bold text
         if tag == 'b':
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
@@ -258,7 +258,6 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     except Exception as e:
         logging.error(f"Failed to send email: {e}")
         logging.debug(traceback.format_exc())
-        
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
