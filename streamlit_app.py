@@ -192,7 +192,7 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", 'B', size=12)
         elif tag == 'p':
             if self.current_data:
-                self.multi_cell(0, 7, self.current_data
+                self.multi_cell(0, 7, self.current_data)
                 self.current_data = ""
             self.ln(10)  # Add space for paragraphs
 
@@ -239,7 +239,6 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
-
 
 
 @traceable
