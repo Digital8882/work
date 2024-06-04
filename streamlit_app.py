@@ -161,15 +161,27 @@ def generate_pdf(result):
     lines = result.split('\n')
     
     for line in lines:
-        if "**" in line:  # Detect headings and subheadings
+        if line.strip().startswith("**") and line.strip().endswith("**"):
             pdf.set_font("Arial", 'B', 12)
             line = line.replace("**", "")
+        elif "**" in line:
+            # Handling inline bold text
+            parts = line.split("**")
+            for i, part in enumerate(parts):
+                if i % 2 == 1:
+                    pdf.set_font("Arial", 'B', 12)
+                    pdf.multi_cell(0, 8, part)
+                else:
+                    pdf.set_font("Arial", size=12)
+                    pdf.multi_cell(0, 8, part)
+            continue  # Skip the regular line processing
         else:
             pdf.set_font("Arial", size=12)
         
         pdf.multi_cell(0, 8, line.strip())  # Use tighter line spacing
     
     return pdf.output(dest="S").encode("latin1")
+
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
