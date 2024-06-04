@@ -169,32 +169,28 @@ class HTMLToPDF(FPDF):
 
     def handle_data(self, data):
         data = data.strip()  # Strip leading/trailing whitespace
-        if data:  # Skip unwanted tag
+        if data and data != '`html':  # Skip unwanted tag
             self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
-        if tag in ['b', 'h1', 'h2', 'h3']:
-            self.ln(5)  # Reduce space before headers and bold text
         if tag == 'b':
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
             self.set_font("Arial", 'B', size=16)
         elif tag == 'h2':
             self.set_font("Arial", 'B', size=14)
-        elif tag == 'h3':
-            self.set_font("Arial", 'B', size=12)
         elif tag == 'p':
             self.set_font("Arial", size=12)
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
             self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2', 'h3']:
+        if tag in ['b', 'h1', 'h2']:
             self.set_font("Arial", size=12)
         if tag == 'p':  # Add an extra newline after paragraphs
             self.ln(10)
-
+            
 # Updated generate_pdf function
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
