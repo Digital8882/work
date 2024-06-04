@@ -36,20 +36,7 @@ icp_task = Task(
 
 
 jtbd_task = Task(
-    description="Job To Be Done analysis for the product.",
-    expected_output=""" Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 200 words and include:
-            - A title
-            - An explanation of what JTBD are and why it is essential to identify them
-            - At least 8 JTBD identified through the simulated interview, each described in detail, 4-5 of these should be related to the product or service and the rest can be outside the scope of the offering but are still important to the customer
-            Format the document as a concise, structured report with headings, subheadings, and bullet points for easy reference and sharing among team members.
-            Explain how gathering this information through interviews helps businesses:
-            - Refine their product offering
-            - Target the right audience
-            - Adjust their marketing and development strategies to better achieve product-market fit"""
-)
-
-pains_task = Task(
-    description=f"""Your task is to conduct a simulated interview with an ideal customer profile on behalf of a business selling a specific product or service, in order to identify their Jobs to Be Done (JTBD) and explore competing solutions.
+   description=f"""Your task is to conduct a simulated interview with an ideal customer profile on behalf of a business selling a specific product or service, in order to identify their Jobs to Be Done (JTBD) and explore competing solutions.
             "To generate the simulated interview and JTBD report, consider the following:"
             "- Analyze the provided ideal customer profile to understand their characteristics, goals, and decision-making process"
             "- Develop a set of open-ended questions that will help uncover the customer's JTBD related to the product or service category"
@@ -91,4 +78,35 @@ pains_task = Task(
             "Conclude the report with a summary of the key findings and specific, actionable recommendations for the business based on the identified JTBD and customer insights."
             "Use a professional, analytical tone throughout the report, ensuring clarity and accessibility necessary for understanding by team members across different functions."
             "If insufficient information is provided about the ideal customer profile or product/service, make reasonable assumptions or provide generic examples, while clearly stating the limitations.""",
+    )
+pains_task = Task(
+    description=f"""Simulate focus group discussions based on your expertise and knowledge of the target market. During these sessions, probe deeply to uncover the following:"
+            "- Three types of customer pains related to the JTBD (not the product): undesired outcomes, problems, and characteristics (functional, social, emotional, ancillary)"
+            "- Pain severity (extreme or moderate)"
+            "- Specific expectations for gains and pains"
+            "- Barriers and risks related to not getting the job done"
+            "- Previous bad experiences with competing solutions"
+            "- Potential objections to current or proposed offerings"
+            "Explain how understanding customer pain points, bad experiences, and objections helps businesses:"
+            "- Prioritize the key pain points to alleviate through improved value propositions"
+            "- Identify opportunities for product/service improvement and innovation"
+            "- Develop targeted marketing messages that resonate with customers' needs and concerns"
+            "- Train customer service teams to address common objections and provide better support"
+            "- Inform overall business strategy to better meet customer needs and expectations"
+            "This report is intended for internal use by the specified teams to inform strategy and improve customer satisfaction.""",
+        expected_output=f"""Synthesize findings into a report of approximately 1200 words, including:  
+            "- A title"
+            "- An overview of the key pain points experienced by the customers, with a detailed analysis of these issues"
+            "- Specific instances of negative experiences customers have had with competing solutions, including direct quotes from customer feedback or focus group discussions"
+            "- Potential objections to current or proposed offerings based on trends observed in customer feedback and market research"
+            "- Case studies or customer testimonials that exemplify each key pain point, bad experience, and objection, using a format that allows for easy extraction of insights (e.g., bullet points, structured summaries)"
+            "Organize the report into three main sections:"
+            "1. Customer Pain Points"
+            "2. Previous Bad Experiences"
+            "3. Possible Objections"
+            "Pains should be related to the jobs-to-be-done (JTBD)"
+            "Each section should begin with an overview followed by detailed examples. Include headings, sub-headings, bullet points, and numbered lists to structure the report in an easy-to-read format."
+            "Conclude the report with a summary that highlights key findings and implications for strategy."
+            "Maintain a professional, analytical tone throughout the report, ensuring clarity and accessibility necessary for understanding by team members across different functions."
+            "If insufficient information is provided about the business, products/services, or ideal customer profiles, make reasonable assumptions or provide generic examples, while clearly stating the limitations.""",
     )
