@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL31"
+os.environ["LANGSMITH_PROJECT"] = "SL01"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -58,6 +58,51 @@ def patched_print(*args, **kwargs):
 # Patch the print function
 builtins.print = patched_print
 
+@traceable
+def send_to_airtable(email, icp_output, jtbd_output, pains_output):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "fields": {
+            "Email": email,
+            AIRTABLE_FIELDS['icp']: icp_output,
+            AIRTABLE_FIELDS['jtbd']: jtbd_output,
+            AIRTABLE_FIELDS['pains']: pains_output,
+        }
+    }
+    try:
+        logging.info(f"Sending data to Airtable: {data}")
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        record = response.json()
+        logging.info(f"Airtable response: {record}")
+        return record['id']
+    except Exception as e:
+        logging.error(f"Failed to update Airtable: {e}")
+        logging.debug(traceback.format_exc())
+        return None
+
+@traceable
+def retrieve_from_airtable(record_id):
+    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
+    headers = {
+        "Authorization": f"Bearer {AIRTABLE_API_KEY}"
+    }
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        record = response.json()
+        logging.info(f"Retrieved from Airtable: {record}")
+        return record['fields']
+    except Exception as e:
+        logging.error(f"Failed to retrieve from Airtable: {e}")
+        logging.debug(traceback.format_exc())
+        return None
+
+# PDF class
 class PDF(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -69,11 +114,6 @@ class PDF(FPDF):
         self.cell(0, 10, title, 0, 1, 'L')
         self.ln(5)
 
-    def chapter_subtitle(self, subtitle):
-        self.set_font('Arial', 'B', 14)
-        self.cell(0, 10, subtitle, 0, 1, 'L')
-        self.ln(5)
-
     def chapter_body(self, body):
         self.set_font('Arial', '', 12)
         self.multi_cell(0, 10, body)
@@ -81,127 +121,66 @@ class PDF(FPDF):
 
     def bullet_point(self, point):
         self.set_font('Arial', '', 12)
-        self.cell(5)  # Indentation for bullet point
+        self.cell(5)
         self.cell(0, 10, f"- {point}", 0, 1, 'L')
 
     def numbered_point(self, num, point):
         self.set_font('Arial', '', 12)
-        self.cell(5)  # Indentation for numbered point
+        self.cell(5)
         self.cell(0, 10, f"{num}. {point}", 0, 1, 'L')
 
-def add_content_to_pdf(pdf, content):
-    for section in content:
-        if 'title' in section:
-            pdf.chapter_title(section['title'])
-        if 'subtitle' in section:
-            pdf.chapter_subtitle(section['subtitle'])
-        if 'body' in section:
-            pdf.chapter_body(section['body'])
-        if 'bullet_points' in section:
-            for point in section['bullet_points']:
-                pdf.bullet_point(point)
-        if 'numbered_points' in section:
-            for num, point in enumerate(section['numbered_points'], start=1):
-                pdf.numbered_point(num, point)
-
-@traceable
-def send_to_airtable(email, icp_output, jtbd_output, pains_output):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "fields": {
-            "Email": email,
-            "ICP": icp_output,
-            "JTBD": jtbd_output,
-            "Pains": pains_output
-        }
-    }
-    response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 200:
-        record_id = response.json().get('id')
-        return record_id
-    else:
-        logging.error(f"Failed to send data to Airtable: {response.status_code} - {response.text}")
-        return None
-
-def generate_pdf(email, icp_output, jtbd_output, pains_output):
+# Function to generate PDF
+def generate_pdf(data):
     pdf = PDF()
     pdf.add_page()
-    content = [
-        {
-            'title': 'ICP Output',
-            'subtitle': f'Ideal Customer Profile for {email}',
-            'body': icp_output
-        },
-        {
-            'title': 'JTBD Output',
-            'subtitle': 'Jobs to Be Done (JTBD) Analysis',
-            'body': jtbd_output
-        },
-        {
-            'title': 'Pains Output',
-            'subtitle': 'Customer Pain Points',
-            'body': pains_output
-        }
-    ]
-    add_content_to_pdf(pdf, content)
-    pdf_filename = f"{email}_report.pdf"
-    pdf.output(pdf_filename)
-    return pdf_filename
+    for key, value in data.items():
+        pdf.chapter_title(key)
+        if isinstance(value, list):
+            for item in value:
+                pdf.bullet_point(item)
+        else:
+            pdf.chapter_body(value)
+    pdf_file = 'Swift_Launch_Report.pdf'
+    pdf.output(pdf_file)
+    return pdf_file
 
-def send_email(recipient_email, pdf_filename):
+def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
+    task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
+    if selling_scope == "Locally":
+        task_description += f" Location: {location}."
+    # Add the logic to call the tasks (icp_task, jtbd_task, pains_task)
+    # This is just a placeholder, replace it with actual task processing logic
+    icp_output = "Ideal Customer Profile: Urban Eco-Rider\n- Age: 18-45\n- Gender: Both\n- Income: Middle to upper-middle class\n..."
+    jtbd_output = "Jobs to be Done (JTBD):\n1. Commuting Efficiency\n2. Environmental Impact\n3. Cost-Effectiveness\n..."
+    pains_output = "Customer Pains:\n1. High cost of traditional transportation\n2. Lack of eco-friendly options\n..."
+    return icp_output, jtbd_output, pains_output
+
+def send_email(recipient, subject, body, attachment_path):
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
-    msg['To'] = recipient_email
-    msg['Subject'] = "Your Swift Launch Report"
+    msg['To'] = recipient
+    msg['Subject'] = subject
 
-    body = "Please find attached your Swift Launch report."
     msg.attach(MIMEText(body, 'plain'))
 
-    attachment = open(pdf_filename, "rb")
-    part = MIMEBase('application', 'octet-stream')
-    part.set_payload((attachment).read())
-    encoders.encode_base64(part)
-    part.add_header('Content-Disposition', f"attachment; filename= {pdf_filename}")
-
-    msg.attach(part)
+    with open(attachment_path, "rb") as attachment:
+        part = MIMEBase('application', 'octet-stream')
+        part.set_payload(attachment.read())
+        encoders.encode_base64(part)
+        part.add_header('Content-Disposition', f'attachment; filename= {os.path.basename(attachment_path)}')
+        msg.attach(part)
 
     server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
     server.starttls()
     server.login(SENDER_EMAIL, SENDER_PASSWORD)
     text = msg.as_string()
-    server.sendmail(SENDER_EMAIL, recipient_email, text)
+    server.sendmail(SENDER_EMAIL, recipient, text)
     server.quit()
 
-@traceable
-def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
-    task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-    if selling_scope == "Locally":
-        task_description += f" Location: {location}."
-    
-    new_task = Task(description=task_description, expected_output="...")
-
-    project_crew = Crew(
-        tasks=[new_task, icp_task, jtbd_task, pains_task],
-        agents=[researcher, report_writer],
-        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=8,
-        process=Process.hierarchical,
-        memory=True,
-    )
-
-    # Assuming this function returns the outputs directly for the sake of example
-    icp_output = "Generated ICP output here"
-    jtbd_output = "Generated JTBD output here"
-    pains_output = "Generated Pains output here"
-
-    return icp_output, jtbd_output, pains_output
-
+# Streamlit application UI
 def main():
-    st.title("Swift Launch")
+    st.title("Swift Launch Report Generator")
+    
     col1, col2 = st.columns(2)
     first_name = col1.text_input("First Name")
     email = col2.text_input("Email")
@@ -234,9 +213,17 @@ def main():
                 
                 if record_id:
                     st.success("Data successfully sent to Airtable!")
-                    pdf_filename = generate_pdf(email, icp_output, jtbd_output, pains_output)
-                    st.success("PDF generated successfully!")
-                    send_email(email, pdf_filename)
+                    
+                    # Generate PDF
+                    data = {
+                        "ICP Output": icp_output,
+                        "JTBD Output": jtbd_output,
+                        "Pains Output": pains_output
+                    }
+                    pdf_file = generate_pdf(data)
+                    
+                    # Send email with PDF attachment
+                    send_email(email, "Your Swift Launch Report", "Please find the attached report.", pdf_file)
                     st.success("Email sent successfully!")
                 else:
                     st.error("Failed to send data to Airtable.")
