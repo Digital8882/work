@@ -19,21 +19,21 @@ import traceback
 import builtins
 import re
 
-# **Configure logging**
+# Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# **Email configuration**
+# Email configuration
 SMTP_SERVER = 'smtp-mail.outlook.com'
 SMTP_PORT = 587
 SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "S1L0061"
+os.environ["LANGSMITH_PROJECT"] = "SL009961"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
-# **Airtable configuration**
+# Airtable configuration
 AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
 AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
 AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
@@ -43,10 +43,10 @@ AIRTABLE_FIELDS = {
     'pains': 'fldyazmtByhtLBEds'
 }
 
-# **Save the original print function**
+# Save the original print function
 original_print = builtins.print
 
-# **Define a patched print function that logs instead of printing**
+# Define a patched print function that logs instead of printing
 def patched_print(*args, **kwargs):
     try:
         original_print(*args, **kwargs)
@@ -54,7 +54,7 @@ def patched_print(*args, **kwargs):
         logging.error(f"BrokenPipeError: {args}")
         logging.debug(traceback.format_exc())
 
-# **Patch the print function**
+# Patch the print function
 builtins.print = patched_print
 
 @traceable
@@ -127,7 +127,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         try:
             logging.info(f"Starting crew process, attempt {attempt + 1}")
             results = project_crew.kickoff()
-            # **Access task outputs directly**
+            # Access task outputs directly
             icp_output = icp_task.output.exported_output if hasattr(icp_task.output, 'exported_output') else "No ICP output"
             jtbd_output = jtbd_task.output.exported_output if hasattr(jtbd_task.output, 'exported_output') else "No JTBD output"
             pains_output = pains_task.output.exported_output if hasattr(pains_task.output, 'exported_output') else "No Pains output"
@@ -150,14 +150,14 @@ def generate_pdf(result):
     pdf = FPDF()
     pdf.add_page()
     
-    # **Set the title**
+    # Set the title
     pdf.set_font("Arial", 'B', 16)
     pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
     
-    # **Add the result content with better formatting**
+    # Add the result content with better formatting
     pdf.set_font("Arial", size=12)
     
-    # **Split the result by lines**
+    # Split the result by lines
     lines = result.split('\n')
     
     for line in lines:
@@ -175,27 +175,27 @@ def generate_pdf(result):
 def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(f"ICP Output\n{icp_output}\n\nJTBD Output\n{jtbd_output}\n\nPains Output\n{pains_output}")
     
-    # **Email details**
+    # Email details
     subject = 'Swift Launch ICP'
     body = 'Please find attached the result Ideal customer profile.'
     
-    # **Create a multipart message**
+    # Create a multipart message
     msg = MIMEMultipart()
     msg['From'] = SENDER_EMAIL
     msg['To'] = email
     msg['Subject'] = subject
     
-    # **Attach the body with the msg instance**
+    # Attach the body with the msg instance
     msg.attach(MIMEText(body, 'plain'))
     
-    # **Attach the PDF file**
+    # Attach the PDF file
     attachment = MIMEBase('application', 'octet-stream')
     attachment.set_payload(pdf_content)
     encoders.encode_base64(attachment)
     attachment.add_header('Content-Disposition', f'attachment; filename=crewAI_result.pdf')
     msg.attach(attachment)
     
-    # **Send the email**
+    # Send the email
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
@@ -207,7 +207,7 @@ def send_email(email, icp_output, jtbd_output, pains_output):
         logging.debug(traceback.format_exc())
 
 def main():
-    # **Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding**
+    # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
     st.markdown(
         """
         <style>
@@ -306,5 +306,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# **Restore the original print function after execution**
+# Restore the original print function after execution
 builtins.print = original_print
