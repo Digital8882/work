@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0008661"
+os.environ["LANGSMITH_PROJECT"] = "SL0608661"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -197,16 +197,17 @@ class HTMLToPDF(FPDF):
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
     
-    pdf.write_html(icp_output)
+    pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output}</p>")
     
     # Add space between sections
     pdf.ln(10)
     
-    pdf.write_html(jtbd_output)
+    pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output}</p>")
     
+    # Add space between sections
     pdf.ln(10)
     
-    pdf.write_html(pains_output)
+    pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output}</p>")
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
@@ -218,7 +219,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
-    pdf_content = generate_pdf(f"ICP Output\n{icp_output}\n\nJTBD Output\n{jtbd_output}\n\nPains Output\n{pains_output}")
+    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
     subject = 'Swift Launch ICP'
@@ -250,6 +251,7 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     except Exception as e:
         logging.error(f"Failed to send email: {e}")
         logging.debug(traceback.format_exc())
+
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
