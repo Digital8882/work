@@ -153,7 +153,6 @@ class HTMLToPDF(FPDF):
         self.add_page()
         self.set_font("Arial", size=12)
         self.tag_stack = []
-        self.current_data = ""
 
     def header(self):
         self.set_font("Arial", 'B', 12)
@@ -167,21 +166,16 @@ class HTMLToPDF(FPDF):
         parser.handle_starttag = self.handle_starttag
         parser.handle_endtag = self.handle_endtag
         parser.feed(html)
-        # Ensure any remaining data is written
-        if self.current_data:
-            self.multi_cell(0, 7, self.current_data)
-            self.current_data = ""
 
     def handle_data(self, data):
-        self.current_data += data.strip() + " "  # Accumulate data for inline handling
+        data = data.strip()  # Strip leading/trailing whitespace
+        if data:  # Skip unwanted tag
+            self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
         if tag in ['b', 'h1', 'h2', 'h3']:
-            if self.current_data:
-                self.multi_cell(0, 7, self.current_data)
-                self.current_data = ""
-            self.ln(5)  # Add space before headers and bold text
+            self.ln(5)  # Reduce space before headers and bold text
         if tag == 'b':
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
@@ -191,10 +185,7 @@ class HTMLToPDF(FPDF):
         elif tag == 'h3':
             self.set_font("Arial", 'B', size=12)
         elif tag == 'p':
-            if self.current_data:
-                self.multi_cell(0, 7, self.current_data)
-                self.current_data = ""
-            self.ln(10)  # Add space for paragraphs
+            self.set_font("Arial", size=12)
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
@@ -203,12 +194,6 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", size=12)
         if tag == 'p':  # Add an extra newline after paragraphs
             self.ln(10)
-        if tag == 'b' or tag == 'strong':  # End bold text handling
-            self.set_font("Arial", size=12)
-        # Ensure the current data is flushed at the end of a tag
-        if self.current_data:
-            self.multi_cell(0, 7, self.current_data)
-            self.current_data = ""
 
 # Updated generate_pdf function
 @traceable
@@ -240,14 +225,8 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     
     return pdf_output
 
-
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
-    # Print the outputs for debugging purposes
-    print("ICP Output:", icp_output)
-    print("JTBD Output:", jtbd_output)
-    print("Pains Output:", pains_output)
-
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
