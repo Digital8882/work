@@ -32,5 +32,5 @@ report_writer = Agent(
     verbose=True,
     allow_delegation=True,
     max_rpm=5,
-    llm=ChatOpenAI(temperature=0, model="gpt-4o", max_tokens=4096),
+    llm=ChatOpenAI(temperature=0, model="gpt-3.5-turbo", max_tokens=4096),
 )
