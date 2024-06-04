@@ -21,7 +21,7 @@ import builtins
 import re
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levellevelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
 SMTP_SERVER = 'smtp-mail.outlook.com'
