@@ -94,7 +94,7 @@ pains_task = Task(
             "- Train customer service teams to address common objections and provide better support"
             "- Inform overall business strategy to better meet customer needs and expectations"
             "This report is intended for internal use by the specified teams to inform strategy and improve customer satisfaction.""",
-    expected_output=f""DO NOT include ##. Synthesize findings into a report of approximately 1200 words, including:  
+    expected_output=f""DO NOT include ##. Synthesize findings into a report of approximately 200 words, including:  
             "- A title"
             "- An overview of the key pain points experienced by the customers, with a detailed analysis of these issues"
             "- Specific instances of negative experiences customers have had with competing solutions, including direct quotes from customer feedback or focus group discussions"
