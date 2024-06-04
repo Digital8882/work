@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0608961"
+os.environ["LANGSMITH_PROJECT"] = "SL068861"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -147,7 +147,6 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
-@traceable
 class HTMLToPDF(FPDF):
     def __init__(self):
         super().__init__()
@@ -170,7 +169,7 @@ class HTMLToPDF(FPDF):
 
     def handle_data(self, data):
         data = data.strip()  # Strip leading/trailing whitespace
-        if data and data != '`html' and data != '```':  # Skip unwanted tag
+        if data:  # Skip unwanted tag
             self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
@@ -195,7 +194,7 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", size=12)
         if tag == 'p':  # Add an extra newline after paragraphs
             self.ln(10)
-
+            
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
@@ -259,7 +258,7 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     except Exception as e:
         logging.error(f"Failed to send email: {e}")
         logging.debug(traceback.format_exc())
-
+        
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
