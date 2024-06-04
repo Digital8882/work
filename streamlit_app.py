@@ -16,7 +16,6 @@ from email.mime.base import MIMEBase
 from email import encoders
 import time
 import traceback
-from html.parser import HTMLParser
 import builtins
 import re
 
@@ -30,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL091"
+os.environ["LANGSMITH_PROJECT"] = "SL0091"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -146,95 +145,35 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
-class HTMLToPDF(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.add_page()
-        self.set_font("Arial", size=12)
-        self.tag_stack = []
-
-    def header(self):
-        self.set_font("Arial", 'B', 12)
-        self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
-        self.ln(20)
-
-    def write_html(self, html):
-        # Remove leading and trailing '''html tags
-        html = html.replace("'''html", "").replace("'''", "")
-        parser = HTMLParser()
-        parser.handle_data = self.handle_data
-        parser.handle_starttag = self.handle_starttag
-        parser.handle_endtag = self.handle_endtag
-        parser.feed(html)
-
-    def handle_data(self, data):
-        data = data.strip()  # Strip leading/trailing whitespace
-        if data:  # Skip unwanted tag
-            self.write_formatted(data)
-
-    def handle_starttag(self, tag, attrs):
-        self.tag_stack.append(tag)
-        if tag == 'b':
-            self.set_font("Arial", 'B', size=12)
-        elif tag == 'h1':
-            self.set_font("Arial", 'B', size=16)
-        elif tag == 'h2':
-            self.set_font("Arial", 'B', size=14)
-        elif tag == 'p':
-            self.set_font("Arial", size=12)
-            self.ln(5)  # Adjust space for paragraphs
-        elif tag == 'li':
-            self.set_x(10)  # Adjust left margin for list items
-            self.set_font("Arial", size=12)
-        elif tag == 'ul' or tag == 'ol':
-            self.ln(5)  # Adjust spacing before list
-        elif tag == 'br':
-            self.ln(5)  # Line break
-
-    def handle_endtag(self, tag):
-        if tag in self.tag_stack:
-            self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2']:
-            self.set_font("Arial", size=12)
-        if tag == 'p':  # Adjust spacing after paragraphs
-            self.ln(5)
-        elif tag == 'li':  # Adjust spacing after list items
-            self.ln(2)
-
-    def write_formatted(self, text):
-        parts = re.split(r'(\*\*.*?\*\*)', text)  # Split text by bold markers
-        for part in parts:
-            if part.startswith('**') and part.endswith('**'):
-                self.set_font("Arial", 'B', size=12)
-                self.multi_cell(0, 7, txt=part[2:-2])  # Remove ** markers
-                self.set_font("Arial", size=12)
-            else:
-                self.multi_cell(0, 7, txt=part)
-
 @traceable
-def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = HTMLToPDF()
+def generate_pdf(result):
+    pdf = FPDF()
+    pdf.add_page()
     
-    pdf.write_html(f"<h1>ICP Output</h1>{icp_output}")
-    pdf.ln(10)
+    # Set the title
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt="CrewAI Result", ln=True, align='C')
     
-    pdf.write_html(f"<h1>JTBD Output</h1>{jtbd_output}")
-    pdf.ln(10)
+    # Add the result content with better formatting
+    pdf.set_font("Arial", size=12)
     
-    pdf.write_html(f"<h1>Pains Output</h1>{pains_output}")
+    # Split the result by lines
+    lines = result.split('\n')
     
-    pdf_output = pdf.output(dest="S").encode("latin1")
+    for line in lines:
+        if "**" in line:  # Detect headings and subheadings
+            pdf.set_font("Arial", 'B', 12)
+            line = line.replace("**", "")
+        else:
+            pdf.set_font("Arial", size=12)
+        
+        pdf.multi_cell(0, 8, line.strip())  # Use tighter line spacing
     
-    # Save a copy locally for inspection
-    with open("report_debug.pdf", "wb") as f:
-        f.write(pdf_output)
-    
-    return pdf_output
+    return pdf.output(dest="S").encode("latin1")
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
-    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)
+    pdf_content = generate_pdf(f"ICP Output\n{icp_output}\n\nJTBD Output\n{jtbd_output}\n\nPains Output\n{pains_output}")
     
     # Email details
     subject = 'Swift Launch ICP'
