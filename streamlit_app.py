@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 SMTP_SERVER = 'smtp-mail.outlook.com'; SMTP_PORT = 587; SENDER_EMAIL = 'info@swiftlaunch.biz'; SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9D1po"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9D1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -171,7 +171,7 @@ class HTMLToPDF(FPDF):
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
         if tag == 'b':
-            self.ln(10)
+            self.ln(5)  # Consistent smaller space before bold text
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
             self.set_font("Arial", 'B', size=16)
@@ -185,8 +185,8 @@ class HTMLToPDF(FPDF):
             self.tag_stack.remove(tag)
         if tag in ['b', 'h1', 'h2']:
             self.set_font("Arial", size=12)
-        if tag == 'p':  # Add an extra newline after paragraphs
-            self.ln(10)
+        if tag == 'p':  # Add a smaller newline after paragraphs
+            self.ln(5)
 
 # Updated generate_pdf function
 @traceable
@@ -201,12 +201,12 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
     
     # Add space between sections
-    pdf.ln(10)
+    pdf.ln(5)
     
     pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output_clean}</p>")
     
     # Add space between sections
-    pdf.ln(10)
+    pdf.ln(5)
     
     pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
     
