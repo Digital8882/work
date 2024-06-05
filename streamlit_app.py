@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0j6Dlxp0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0j6l9D1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -153,7 +153,6 @@ class HTMLToPDF(FPDF):
         self.add_page()
         self.set_font("Arial", size=12)
         self.tag_stack = []
-        self.current_data = ""
 
     def header(self):
         self.set_font("Arial", 'B', 12)
@@ -167,48 +166,33 @@ class HTMLToPDF(FPDF):
         parser.handle_starttag = self.handle_starttag
         parser.handle_endtag = self.handle_endtag
         parser.feed(html)
-        # Ensure any remaining data is written
-        if self.current_data:
-            self.multi_cell(0, 7, self.current_data)
-            self.current_data = ""
 
     def handle_data(self, data):
-        self.current_data += data.strip() + " "  # Accumulate data for inline handling
+        data = data.strip()  # Strip leading/trailing whitespace
+        if data and data != '`html':  # Skip unwanted tag
+            self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
-        if tag in ['b', 'h1', 'h2', 'h3']:
-            if self.current_data:
-                self.multi_cell(0, 7, self.current_data)
-                self.current_data = ""
-            self.ln(5)  # Add space before headers and bold text
         if tag == 'b':
+            self.ln(5)  # Consistent smaller space before bold text
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
             self.set_font("Arial", 'B', size=16)
+            self.ln(5)
         elif tag == 'h2':
             self.set_font("Arial", 'B', size=14)
-        elif tag == 'h3':
-            self.set_font("Arial", 'B', size=12)
+            self.ln(5)
         elif tag == 'p':
-            if self.current_data:
-                self.multi_cell(0, 7, self.current_data)
-                self.current_data = ""
-            self.ln(10)  # Add space for paragraphs
+            self.set_font("Arial", size=12)
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
             self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2', 'h3']:
+        if tag in ['b', 'h1', 'h2']:
             self.set_font("Arial", size=12)
-        if tag == 'p':  # Add an extra newline after paragraphs
-            self.ln(10)
-        if tag == 'b' or tag == 'strong':  # End bold text handling
-            self.set_font("Arial", size=12)
-        # Ensure the current data is flushed at the end of a tag
-        if self.current_data:
-            self.multi_cell(0, 7, self.current_data)
-            self.current_data = ""
+        if tag == 'p':  # Add a smaller newline after paragraphs
+            self.ln(5)
 
 # Updated generate_pdf function
 @traceable
@@ -223,12 +207,12 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
     
     # Add space between sections
-    pdf.ln(10)
+    pdf.ln(5)
     
     pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output_clean}</p>")
     
     # Add space between sections
-    pdf.ln(10)
+    pdf.ln(5)
     
     pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
     
@@ -239,8 +223,6 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
-
-
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
