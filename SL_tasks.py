@@ -18,7 +18,6 @@ icp_task = Task(
     expected_output=f"""In html Create an ideal customer profile document of approximately 500 words , including:"
             "a story-like format that is easy to understand and remember. For example:
             "Meet [Name], a [age]-year-old [gender] who works as a [occupation] in [location]. [Name] values [values] and enjoys [interests/hobbies] in their free time. As a [personality trait] person, [Name] struggles with [pain point/challenge] when it comes to [product/service category]. They aspire to [goal/desire] and believe that the right [product/service] can help them achieve this. [Name] prefers to communicate via [preferred channels] and often consumes media through [media habits]. When considering a purchase, [Name] typically [decision-making process description] and their main concerns are [objections/hesitations]."
-            "- A title featuring the memorable ICP name"
             "- A detailed description of the target customer, including:"
             "- Demographic characteristics (e.g., age, gender, income, education, occupation)"
             "- Geographic characteristics (e.g., location, urban/rural, climate)"
@@ -48,7 +47,6 @@ jtbd_task = Task(
             "- Synthesize the findings into a clear and concise report that highlights the key JTBD and actionable recommendations"
             "The simulated interview and report should be written in a professional, analytical tone, ensuring clarity and accessibility necessary for understanding by team members across different functions.",
     expected_output=f"In html. Create a Jobs to Be Done (JTBD) report based on the simulated interview with the ideal customer profile. The report should be approximately 800 words  and include:"
-            "- A title"
             "- An explanation of what JTBD are and why it is essential to identify them"
             "- At least 8 JTBD identified through the simulated interview, each described in detail, 4-5 of these should be related to the product or service and the rest can be outside the scope of the offering but are still important to the customer"
             "- A prioritized list of the identified JTBD based on their importance and impact on the customer's decision-making process, including the reasoning behind the prioritization"
@@ -95,7 +93,6 @@ pains_task = Task(
             "- Inform overall business strategy to better meet customer needs and expectations"
             "This report is intended for internal use by the specified teams to inform strategy and improve customer satisfaction.",
     expected_output=f"In html. Synthesize findings into a report of approximately 500 words, including:" 
-            "- A title"
             "- An overview of the key pain points experienced by the customers, with a detailed analysis of these issues"
             "- Specific instances of negative experiences customers have had with competing solutions, including direct quotes from customer feedback or focus group discussions"
             "- Potential objections to current or proposed offerings based on trends observed in customer feedback and market research"
