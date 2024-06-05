@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9fkD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6r3fkD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -162,7 +162,6 @@ class RichTextPDF(FPDF):
         self.ln(10)
 
     def write_rich_text(self, text):
-        # Parse and replace markdown-like syntax with PDF formatting
         bold = re.compile(r'\*\*(.*?)\*\*')
         italic = re.compile(r'\*(.*?)\*')
         header1 = re.compile(r'^# (.*?)$', re.MULTILINE)
@@ -170,38 +169,41 @@ class RichTextPDF(FPDF):
         header3 = re.compile(r'^### (.*?)$', re.MULTILINE)
         bullet = re.compile(r'^- (.*?)$', re.MULTILINE)
 
-        text = header1.sub(r'\n<h1>\1</h1>\n', text)
-        text = header2.sub(r'\n<h2>\1</h2>\n', text)
-        text = header3.sub(r'\n<b>\1</b>\n', text)  # Bold the headers starting with ###
-        text = bold.sub(r'<b>\1</b>', text)
-        text = italic.sub(r'<i>\1</i>', text)
-        text = bullet.sub(r'<li>\1</li>', text)
+        text = header1.sub(r'\n<H1>\1</H1>\n', text)
+        text = header2.sub(r'\n<H2>\1</H2>\n', text)
+        text = header3.sub(r'\n<H3>\1</H3>\n', text)  # Bold the headers starting with ###
+        text = bold.sub(r'<B>\1</B>', text)
+        text = italic.sub(r'<I>\1</I>', text)
+        text = bullet.sub(r'<LI>\1</LI>', text)
 
         self.write_text(text)
 
     def write_text(self, text):
-        # Process text line by line and apply PDF formatting
         for line in text.split('\n'):
-            if line.startswith('<h1>'):
+            if line.startswith('<H1>'):
                 self.set_font('Arial', 'B', 16)
-                self.multi_cell(0, 10, line.replace('<h1>', '').replace('</h1>', ''))
-            elif line.startswith('<h2>'):
+                self.multi_cell(0, 10, line.replace('<H1>', '').replace('</H1>', ''))
+            elif line.startswith('<H2>'):
                 self.set_font('Arial', 'B', 14)
-                self.multi_cell(0, 10, line.replace('<h2>', '').replace('</h2>', ''))
-            elif line.startswith('<b>'):
+                self.multi_cell(0, 10, line.replace('<H2>', '').replace('</H2>', ''))
+            elif line.startswith('<H3>'):
                 self.set_font('Arial', 'B', 12)
-                self.multi_cell(0, 10, line.replace('<b>', '').replace('</b>', ''))
-            elif line.startswith('<i>'):
+                self.multi_cell(0, 10, line.replace('<H3>', '').replace('</H3>', ''))
+            elif line.startswith('<B>'):
+                self.set_font('Arial', 'B', 12)
+                self.multi_cell(0, 10, line.replace('<B>', '').replace('</B>', ''))
+            elif line.startswith('<I>'):
                 self.set_font('Arial', 'I', 12)
-                self.multi_cell(0, 10, line.replace('<i>', '').replace('</i>', ''))
-            elif line.startswith('<li>'):
+                self.multi_cell(0, 10, line.replace('<I>', '').replace('</I>', ''))
+            elif line.startswith('<LI>'):
                 self.cell(10)
-                self.multi_cell(0, 10, '- ' + line.replace('<li>', '').replace('</li>', ''))
+                self.multi_cell(0, 10, '- ' + line.replace('<LI>', '').replace('</LI>', ''))
             else:
                 self.set_font('Arial', '', 12)
                 self.multi_cell(0, 10, line)
             self.ln(5)
 
+# Example of generating the PDF
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = RichTextPDF()
     
@@ -220,6 +222,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
+
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
