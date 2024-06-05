@@ -153,6 +153,7 @@ class HTMLToPDF(FPDF):
         self.add_page()
         self.set_font("Arial", size=12)
         self.tag_stack = []
+        self.current_data = ""
 
     def header(self):
         self.set_font("Arial", 'B', 12)
@@ -166,42 +167,50 @@ class HTMLToPDF(FPDF):
         parser.handle_starttag = self.handle_starttag
         parser.handle_endtag = self.handle_endtag
         parser.feed(html)
+        # Ensure any remaining data is written
+        if self.current_data:
+            self.multi_cell(0, 7, self.current_data)
+            self.current_data = ""
 
     def handle_data(self, data):
-        data = data.strip()  # Strip leading/trailing whitespace
-        if data and data != '`html':  # Skip unwanted tag
-            if ':' in data:
-                parts = data.split(':', 1)
-                self.set_font("Arial", 'B', 12)
-                self.multi_cell(0, 7, txt=parts[0] + ':')
-                self.set_font("Arial", size=12)
-                self.multi_cell(0, 7, txt=parts[1].strip())
-            else:
-                self.multi_cell(0, 7, txt=data)
+        self.current_data += data.strip() + " "  # Accumulate data for inline handling
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
+        if tag in ['b', 'h1', 'h2', 'h3']:
+            if self.current_data:
+                self.multi_cell(0, 7, self.current_data)
+                self.current_data = ""
+            self.ln(5)  # Add space before headers and bold text
         if tag == 'b':
-            self.ln(5)  # Consistent smaller space before bold text
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
             self.set_font("Arial", 'B', size=16)
-            self.ln(5)
         elif tag == 'h2':
             self.set_font("Arial", 'B', size=14)
-            self.ln(5)
+        elif tag == 'h3':
+            self.set_font("Arial", 'B', size=12)
         elif tag == 'p':
-            self.set_font("Arial", size=12)
+            if self.current_data:
+                self.multi_cell(0, 7, self.current_data)
+                self.current_data = ""
+            self.ln(10)  # Add space for paragraphs
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
             self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2']:
+        if tag in ['b', 'h1', 'h2', 'h3']:
             self.set_font("Arial", size=12)
-        if tag == 'p':  # Add a smaller newline after paragraphs
-            self.ln(5)
+        if tag == 'p':  # Add an extra newline after paragraphs
+            self.ln(10)
+        if tag == 'b' or tag == 'strong':  # End bold text handling
+            self.set_font("Arial", size=12)
+        # Ensure the current data is flushed at the end of a tag
+        if self.current_data:
+            self.multi_cell(0, 7, self.current_data)
+            self.current_data = ""
 
-# Updated generate_pdf function without CSS code
+# Updated generate_pdf function
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
@@ -214,12 +223,12 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
     
     # Add space between sections
-    pdf.ln(5)
+    pdf.ln(10)
     
     pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output_clean}</p>")
     
     # Add space between sections
-    pdf.ln(5)
+    pdf.ln(10)
     
     pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
     
