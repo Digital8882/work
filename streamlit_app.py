@@ -155,8 +155,6 @@ class PlainTextPDF(FPDF):
         self.set_auto_page_break(auto=True, margin=15)
         self.multi_cell(0, 10, text)
 
-@traceable
-import re
 
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
