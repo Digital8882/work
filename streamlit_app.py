@@ -172,10 +172,10 @@ class HTMLToPDF(FPDF):
         if data and data != '`html':  # Skip unwanted tag
             if ':' in data:
                 parts = data.split(':', 1)
-                self.set_font("Arial", 'U', 12)
-                self.cell(0, 7, txt=parts[0] + ':', border=0)
+                self.set_font("Arial", 'B', 12)
+                self.multi_cell(0, 7, txt=parts[0] + ':')
                 self.set_font("Arial", size=12)
-                self.cell(0, 7, txt=' ' + parts[1], border=0, ln=1)
+                self.multi_cell(0, 7, txt=parts[1].strip())
             else:
                 self.multi_cell(0, 7, txt=data)
 
@@ -230,6 +230,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
+
 
 
 @traceable
