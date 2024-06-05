@@ -178,13 +178,21 @@ class RichTextPDF(FPDF):
                 self.cell(10)
                 self.multi_cell(0, 10, '- ' + line[2:])
             else:
-                line = self.apply_inline_formatting(line)
-                self.set_font('Arial', '', 12)
-                self.multi_cell(0, 10, line)
+                self.write_formatted_text(line)
             self.ln(5)
 
-    def apply_inline_formatting(self, text):
-        # Apply bold and italic formatting within the line
+    def write_formatted_text(self, text):
+        segments = self.parse_inline_formatting(text)
+        for segment in segments:
+            if segment[0] == 'bold':
+                self.set_font('Arial', 'B', 12)
+            elif segment[0] == 'italic':
+                self.set_font('Arial', 'I', 12)
+            else:
+                self.set_font('Arial', '', 12)
+            self.multi_cell(0, 10, segment[1], 0, 'L', False)
+
+    def parse_inline_formatting(self, text):
         segments = []
         pos = 0
         while True:
@@ -203,55 +211,7 @@ class RichTextPDF(FPDF):
                     segments.append(('normal', text[pos:italic_match.start()]))
                 segments.append(('italic', italic_match.group(1)))
                 pos = italic_match.end()
-
-        formatted_text = ''
-        for style, segment in segments:
-            if style == 'bold':
-                formatted_text += f'<b>{segment}</b>'
-            elif style == 'italic':
-                formatted_text += f'<i>{segment}</i>'
-            else:
-                formatted_text += segment
-        return formatted_text
-
-    def multi_cell(self, w, h, txt, border=0, align='', fill=False):
-        # Handle inline formatting tags within the text
-        if '<b>' in txt or '<i>' in txt:
-            formatted_segments = self.parse_formatting(txt)
-            for segment in formatted_segments:
-                if segment[0] == 'normal':
-                    self.set_font('Arial', '', 12)
-                elif segment[0] == 'bold':
-                    self.set_font('Arial', 'B', 12)
-                elif segment[0] == 'italic':
-                    self.set_font('Arial', 'I', 12)
-                super().multi_cell(w, h, segment[1], border, align, fill)
-        else:
-            super().multi_cell(w, h, txt, border, align, fill)
-
-    def parse_formatting(self, text):
-        segments = []
-        while text:
-            if text.startswith('<b>'):
-                end = text.find('</b>')
-                if end == -1:
-                    segments.append(('normal', text))
-                    break
-                segments.append(('bold', text[3:end]))
-                text = text[end+4:]
-            elif text.startswith('<i>'):
-                end = text.find('</i>')
-                if end == -1:
-                    segments.append(('normal', text))
-                    break
-                segments.append(('italic', text[3:end]))
-                text = text[end+4:]
-            else:
-                end = min((text.find(tag) for tag in ['<b>', '<i>'] if text.find(tag) != -1), default=len(text))
-                segments.append(('normal', text[:end]))
-                text = text[end:]
         return segments
-
 
 # Example of generating the PDF
 def generate_pdf(icp_output, jtbd_output, pains_output):
