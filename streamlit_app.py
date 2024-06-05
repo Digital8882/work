@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0j6Dxp0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0j6Dlxp0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -201,7 +201,7 @@ class HTMLToPDF(FPDF):
         if tag == 'p':  # Add a smaller newline after paragraphs
             self.ln(5)
 
-# Updated generate_pdf function
+# Updated generate_pdf function without CSS code
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
@@ -222,22 +222,6 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf.ln(5)
     
     pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
-    
-    # Add the plain text CSS as-is
-    css_code = """
-    body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-    }
-    h1, h2, h3 {
-        color: #333;
-    }
-    .section {
-        margin-bottom: 20px;
-    }
-    """
-    pdf.set_font("Arial", size=10)
-    pdf.multi_cell(0, 7, txt=css_code)
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
