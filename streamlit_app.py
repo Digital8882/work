@@ -19,6 +19,7 @@ import builtins
 import re
 import asyncio
 import httpx
+import markdown2
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -30,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l93p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -155,25 +156,15 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-class RichTextPDF(FPDF):
+class HTMLToPDF(FPDF):
     def header(self):
         self.set_font("Arial", 'B', 12)
         self.set_text_color(255, 165, 0)  # Orange color
         self.cell(0, 10, 'Swift Launch Report', 0, 1, 'R')
         self.ln(10)
 
-    def write_rich_text(self, text):
-        # Replace Markdown-like syntax with PDF formatting
-        text = text.replace("**", "<b>").replace("**", "</b>")  # Handle bold
-        text = text.replace("*", "<i>").replace("*", "</i>")    # Handle italics
-        text = re.sub(r"^# (.*?)$", r"<h1>\1</h1>", text, flags=re.MULTILINE)  # Handle headings
-        text = re.sub(r"^## (.*?)$", r"<h2>\1</h2>", text, flags=re.MULTILINE)
-        text = re.sub(r"^- (.*?)$", r"<li>\1</li>", text, flags=re.MULTILINE)  # Handle lists
-
-        self.write_html(text)
-
     def write_html(self, html):
-        # Simplistic HTML parser to handle basic tags
+        # A simple HTML parser to convert some basic tags into PDF formatting
         tag = None
         for line in html.split('\n'):
             if line.strip().startswith('<') and line.strip().endswith('>'):
@@ -181,12 +172,6 @@ class RichTextPDF(FPDF):
                     tag = 'b'
                     self.set_font('Arial', 'B', 12)
                 elif '/b>' in line:
-                    tag = None
-                    self.set_font('Arial', '', 12)
-                elif 'i>' in line:
-                    tag = 'i'
-                    self.set_font('Arial', 'I', 12)
-                elif '/i>' in line:
                     tag = None
                     self.set_font('Arial', '', 12)
                 elif 'h1>' in line:
@@ -218,15 +203,20 @@ class RichTextPDF(FPDF):
             self.ln(5)
 
 def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = RichTextPDF()
+    pdf = HTMLToPDF()
     
     pdf.add_page()
     
-    pdf.write_rich_text(f"# ICP Output\n\n{icp_output}\n\n")
+    # Convert Markdown to HTML
+    icp_html = markdown2.markdown(icp_output)
+    jtbd_html = markdown2.markdown(jtbd_output)
+    pains_html = markdown2.markdown(pains_output)
+    
+    pdf.write_html(f"<h1>ICP Output</h1>{icp_html}")
     pdf.ln(10)
-    pdf.write_rich_text(f"# JTBD Output\n\n{jtbd_output}\n\n")
+    pdf.write_html(f"<h1>JTBD Output</h1>{jtbd_html}")
     pdf.ln(10)
-    pdf.write_rich_text(f"# Pains Output\n\n{pains_output}\n\n")
+    pdf.write_html(f"<h1>Pains Output</h1>{pains_html}")
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
