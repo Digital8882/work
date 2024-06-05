@@ -156,6 +156,9 @@ class PlainTextPDF(FPDF):
         self.multi_cell(0, 10, text)
 
 @traceable
+import re
+
+@traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = FPDF()
     pdf.add_page()
@@ -169,11 +172,11 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add ICP output
     pdf.multi_cell(0, 5, "ICP Output:")  # Add section header
     for line in icp_output_lines:
-        # Make text after ## and ### bold
-        line = re.sub(r'##(.*?)##', r'<b>\1</b>', line)
-        line = re.sub(r'###(.*?)###', r'<b>\1</b>', line)
-        # Make text between ** and ** bold
-        line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+        # Make text after ## and ### bold, ignoring existing HTML tags
+        line = re.sub(r'(?<!</b>)##(.*?)##(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!</b>)###(.*?)###(?!</b>)', r'<b>\1</b>', line)
+        # Make text between ** and ** bold, ignoring existing HTML tags
+        line = re.sub(r'(?<!</b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
         pdf.multi_cell(0, 5, line)  # Add each line individually
 
     # Add space between sections
@@ -182,11 +185,11 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add JTBD output
     pdf.multi_cell(0, 5, "JTBD Output:")
     for line in jtbd_output_lines:
-        # Make text after ## and ### bold
-        line = re.sub(r'##(.*?)##', r'<b>\1</b>', line)
-        line = re.sub(r'###(.*?)###', r'<b>\1</b>', line)
-        # Make text between ** and ** bold
-        line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+        # Make text after ## and ### bold, ignoring existing HTML tags
+        line = re.sub(r'(?<!</b>)##(.*?)##(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!</b>)###(.*?)###(?!</b>)', r'<b>\1</b>', line)
+        # Make text between ** and ** bold, ignoring existing HTML tags
+        line = re.sub(r'(?<!</b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
         pdf.multi_cell(0, 5, line)
 
     # Add space between sections
@@ -195,11 +198,11 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add Pains output
     pdf.multi_cell(0, 5, "Pains Output:")
     for line in pains_output_lines:
-        # Make text after ## and ### bold
-        line = re.sub(r'##(.*?)##', r'<b>\1</b>', line)
-        line = re.sub(r'###(.*?)###', r'<b>\1</b>', line)
-        # Make text between ** and ** bold
-        line = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', line)
+        # Make text after ## and ### bold, ignoring existing HTML tags
+        line = re.sub(r'(?<!</b>)##(.*?)##(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!</b>)###(.*?)###(?!</b>)', r'<b>\1</b>', line)
+        # Make text between ** and ** bold, ignoring existing HTML tags
+        line = re.sub(r'(?<!</b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
         pdf.multi_cell(0, 5, line)
 
     pdf_output = pdf.output(dest="S").encode("latin1")
