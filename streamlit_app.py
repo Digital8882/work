@@ -152,7 +152,6 @@ class HTMLToPDF(FPDF):
         super().__init__()
         self.set_auto_page_break(auto=True, margin=15)
         self.set_font("Arial", size=12)
-        self.tag_stack = []
 
     def header(self):
         self.set_font("Arial", 'B', 12)
@@ -177,64 +176,13 @@ class HTMLToPDF(FPDF):
         self.cell(0, 10, date, 0, 1, 'C')
         self.ln(20)
 
-    def add_section(self, title, content, color):
+    def add_section(self, title, content):
         self.add_page()
-        self.set_text_color(*color)  # Set color for the section line
-        self.line(10, 10, 10, 287)  # Vertical line in the left margin
-        self.set_text_color(0, 0, 0)  # Reset color for text
         self.set_font("Arial", 'B', 16)
         self.cell(0, 10, title, 0, 1, 'L')
         self.ln(10)
         self.set_font("Arial", size=12)
         self.multi_cell(0, 10, content)
-
-    def write_html(self, html):
-        parser = HTMLParser()
-        parser.handle_data = self.handle_data
-        parser.handle_starttag = self.handle_starttag
-        parser.handle_endtag = self.handle_endtag
-        parser.feed(html)
-
-    def handle_data(self, data):
-        data = data.strip()
-        if data and data != '`html':
-            self.multi_cell(0, 7, txt=data)
-
-    def handle_starttag(self, tag, attrs):
-        self.tag_stack.append(tag)
-        if tag == 'b':
-            self.set_font("Arial", 'B', size=12)
-        elif tag == 'h1':
-            self.set_font("Arial", 'B', size=16)
-            self.ln(5)
-        elif tag == 'h2':
-            self.set_font("Arial", 'B', size=14)
-            self.ln(5)
-        elif tag == 'p':
-            self.set_font("Arial", size=12)
-        elif tag == 'table':
-            self.set_font("Arial", size=12)
-            self.ln(5)
-        elif tag == 'th':
-            self.set_font("Arial", 'B', size=12)
-            self.cell(40, 10, 'Header', 1)
-        elif tag == 'td':
-            self.set_font("Arial", size=12)
-            self.cell(40, 10, 'Cell', 1)
-
-    def handle_endtag(self, tag):
-        if tag in self.tag_stack:
-            self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2']:
-            self.set_font("Arial", size=12)
-        if tag == 'p':
-            self.ln(5)
-        if tag == 'table':
-            self.ln(10)
-        if tag == 'th':
-            self.ln(5)
-        if tag == 'td':
-            self.ln(5)
 
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
@@ -247,19 +195,22 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         date=datetime.now().strftime("%B %d, %Y")
     )
     
-    # Process the outputs to remove unwanted markdown syntax
-    icp_output_clean = icp_output.replace('```html', '').replace('```', '').strip()
-    jtbd_output_clean = jtbd_output.replace('```html', '').replace('```', '').strip()
-    pains_output_clean = pains_output.replace('```html', '').replace('```', '').strip()
+    # Clean the outputs from unwanted markdown syntax
+    def clean_output(output):
+        return output.replace('```html', '').replace('```', '').strip()
+    
+    icp_output_clean = clean_output(icp_output)
+    jtbd_output_clean = clean_output(jtbd_output)
+    pains_output_clean = clean_output(pains_output)
     
     # Add ICP section
-    pdf.add_section("ICP Output", icp_output_clean, (255, 0, 0))  # Red line
+    pdf.add_section("ICP Output", icp_output_clean)
     
     # Add JTBD section
-    pdf.add_section("JTBD Output", jtbd_output_clean, (0, 255, 0))  # Green line
+    pdf.add_section("JTBD Output", jtbd_output_clean)
     
     # Add Pains section
-    pdf.add_section("Pains Output", pains_output_clean, (0, 0, 255))  # Blue line
+    pdf.add_section("Pains Output", pains_output_clean)
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
@@ -268,6 +219,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
+
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
