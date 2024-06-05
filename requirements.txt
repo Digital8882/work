@@ -16,5 +16,4 @@ airtable-python-wrapper
 pandas
 langsmith
 fpdf
-pyairtable
-
+httpx
