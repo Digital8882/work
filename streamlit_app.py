@@ -25,18 +25,15 @@ from html.parser import HTMLParser
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
-SMTP_SERVER = 'smtp-mail.outlook.com'
-SMTP_PORT = 587
-SENDER_EMAIL = 'info@swiftlaunch.biz'
-SENDER_PASSWORD = 'Lovelife1#'
+SMTP_SERVER = 'smtp-mail.outlook.com'; SMTP_PORT = 587; SENDER_EMAIL = 'info@swiftlaunch.biz'; SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9D1o"
-os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9D1po"
+os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
 # Airtable configuration
-AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
+AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e' 
 AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
 AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
 AIRTABLE_FIELDS = {
@@ -111,8 +108,7 @@ def retrieve_from_airtable(record_id):
 @traceable
 def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
     task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-    if selling_scope == "Locally":
-        task_description += f" Location: {location}."
+    if selling_scope == "Locally": task_description += f" Location: {location}."
     
     new_task = Task(description=task_description, expected_output="...")
 
@@ -175,6 +171,7 @@ class HTMLToPDF(FPDF):
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
         if tag == 'b':
+            self.ln(10)
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
             self.set_font("Arial", 'B', size=16)
@@ -190,7 +187,7 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", size=12)
         if tag == 'p':  # Add an extra newline after paragraphs
             self.ln(10)
-            
+
 # Updated generate_pdf function
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
@@ -226,14 +223,11 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
-    subject = 'Swift Launch ICP'
-    body = 'Please find attached the result Ideal customer profile.'
+    subject = 'Swift Launch ICP'; body = 'Please find attached the result Ideal customer profile.'
     
     # Create a multipart message
     msg = MIMEMultipart()
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = email
-    msg['Subject'] = subject
+    msg['From'] = SENDER_EMAIL; msg['To'] = email; msg['Subject'] = subject
     
     # Attach the body with the msg instance
     msg.attach(MIMEText(body, 'plain'))
@@ -255,7 +249,6 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     except Exception as e:
         logging.error(f"Failed to send email: {e}")
         logging.debug(traceback.format_exc())
-
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
@@ -308,11 +301,10 @@ def main():
         unsafe_allow_html=True
     )
 
-    st.markdown('<h1 class="title">Ideal Customer Profile Generator</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="title">Swift Launch Report</h1>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    first_name = col1.text_input("First Name")
-    email = col2.text_input("Email")
+    first_name = col1.text_input("First Name"); email = col2.text_input("Email")
 
     if len(email) > 0 and "@" not in email:
         st.error("Please enter a valid email address")
@@ -320,16 +312,13 @@ def main():
     product_service = st.text_input("Product/Service being sold")
     
     col3, col4 = st.columns(2)
-    price = col3.text_input("Price")
-    currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
+    price = col3.text_input("Price"); currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
     
     col5, col6 = st.columns(2)
-    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"])
-    selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
+    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"]); selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
 
     location = ""
-    if selling_scope == "Locally":
-        location = st.text_input("Location")
+    if selling_scope == "Locally": location = st.text_input("Location")
 
     if st.button("Submit"):
         if email and product_service and price:
