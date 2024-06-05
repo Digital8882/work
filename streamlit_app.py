@@ -7,7 +7,6 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-import requests
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -18,22 +17,25 @@ import time
 import traceback
 import builtins
 import re
-import urllib.parse  # For URL encoding
-from html.parser import HTMLParser
+import asyncio
+import httpx
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
-SMTP_SERVER = 'smtp-mail.outlook.com'; SMTP_PORT = 587; SENDER_EMAIL = 'info@swiftlaunch.biz'; SENDER_PASSWORD = 'Lovelife1#'
+SMTP_SERVER = 'smtp-mail.outlook.com'
+SMTP_PORT = 587
+SENDER_EMAIL = 'info@swiftlaunch.biz'
+SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1dp0o"
-os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
+os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
 # Airtable configuration
-AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e' 
+AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
 AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
 AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
 AIRTABLE_FIELDS = {
@@ -57,7 +59,7 @@ def patched_print(*args, **kwargs):
 builtins.print = patched_print
 
 @traceable
-def send_to_airtable(email, icp_output, jtbd_output, pains_output):
+async def send_to_airtable(email, icp_output, jtbd_output, pains_output, retries=3):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -71,52 +73,62 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
             AIRTABLE_FIELDS['pains']: pains_output,
         }
     }
-    try:
-        logging.info(f"Sending data to Airtable: {data}")
-        response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        record = response.json()
-        logging.info(f"Airtable response: {record}")
-        return record['id']
-    except Exception as e:
-        logging.error(f"Failed to update Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None
+    async with httpx.AsyncClient() as client:
+        for attempt in range(retries):
+            try:
+                response = await client.post(url, headers=headers, json=data)
+                response.raise_for_status()
+                record = response.json()
+                logging.info(f"Airtable response: {record}")
+                return record['id']
+            except httpx.HTTPStatusError as e:
+                logging.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
+            except httpx.RequestError as e:
+                logging.error(f"Request error occurred: {e}")
+            if attempt < retries - 1:
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+    raise Exception("Failed to send data to Airtable after multiple attempts")
 
 @traceable
-def retrieve_from_airtable(record_id):
+async def retrieve_from_airtable(record_id, retries=3):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}"
     }
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        record = response.json()
-        fields = record.get('fields', {})
-        logging.info("Data retrieved from Airtable successfully")
-        return (
-            fields.get(AIRTABLE_FIELDS['icp'], ''),
-            fields.get(AIRTABLE_FIELDS['jtbd'], ''),
-            fields.get(AIRTABLE_FIELDS['pains'], '')
-        )
-    except Exception as e:
-        logging.error(f"Failed to retrieve data from Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None, None, None
+    async with httpx.AsyncClient() as client:
+        for attempt in range(retries):
+            try:
+                response = await client.get(url, headers=headers)
+                response.raise_for_status()
+                record = response.json()
+                fields = record.get('fields', {})
+                logging.info("Data retrieved from Airtable successfully")
+                return (
+                    fields.get(AIRTABLE_FIELDS['icp'], ''),
+                    fields.get(AIRTABLE_FIELDS['jtbd'], ''),
+                    fields.get(AIRTABLE_FIELDS['pains'], '')
+                )
+            except httpx.HTTPStatusError as e:
+                logging.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
+            except httpx.RequestError as e:
+                logging.error(f"Request error occurred: {e}")
+            if attempt < retries - 1:
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
+    raise Exception("Failed to retrieve data from Airtable after multiple attempts")
 
 @traceable
-def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
+async def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
     task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-    if selling_scope == "Locally": task_description += f" Location: {location}."
-    
+    if selling_scope == "Locally":
+        task_description += f" Location: {location}."
+
     new_task = Task(description=task_description, expected_output="...")
 
     project_crew = Crew(
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=8,
+        max_rpm=6,
         process=Process.hierarchical,
         memory=True,
     )
@@ -163,7 +175,7 @@ class PlainTextPDF(FPDF):
 
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = PlainTextPDF()
-
+    
     pdf.write_text(f"Ideal Customer Profile (ICP) for the Electric Scooter Market in the UK\n\n{icp_output}\n\n")
     pdf.write_text(f"JTBD Output\n\n{jtbd_output}\n\n")
     pdf.write_text(f"Pains Output\n\n{pains_output}\n\n")
@@ -176,17 +188,19 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     
     return pdf_output
 
-
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
-    subject = 'Swift Launch ICP'; body = 'Please find attached the result Ideal customer profile.'
+    subject = 'Swift Launch ICP'
+    body = 'Please find attached the result Ideal customer profile.'
     
     # Create a multipart message
     msg = MIMEMultipart()
-    msg['From'] = SENDER_EMAIL; msg['To'] = email; msg['Subject'] = subject
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = email
+    msg['Subject'] = subject
     
     # Attach the body with the msg instance
     msg.attach(MIMEText(body, 'plain'))
@@ -263,7 +277,8 @@ def main():
     st.markdown('<h1 class="title">Swift Launch Report</h1>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    first_name = col1.text_input("First Name"); email = col2.text_input("Email")
+    first_name = col1.text_input("First Name")
+    email = col2.text_input("Email")
 
     if len(email) > 0 and "@" not in email:
         st.error("Please enter a valid email address")
@@ -271,29 +286,40 @@ def main():
     product_service = st.text_input("Product/Service being sold")
     
     col3, col4 = st.columns(2)
-    price = col3.text_input("Price"); currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
+    price = col3.text_input("Price")
+    currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
     
     col5, col6 = st.columns(2)
-    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"]); selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
+    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"])
+    selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
 
     location = ""
-    if selling_scope == "Locally": location = st.text_input("Location")
+    if selling_scope == "Locally":
+        location = st.text_input("Location")
 
     if st.button("Submit"):
         if email and product_service and price:
             try:
                 with st.spinner("Generating customer profile..."):
-                    icp_output, jtbd_output, pains_output = start_crew_process(
-                        email, product_service, price, currency, payment_frequency, selling_scope, location)
-                
-                record_id = send_to_airtable(email, icp_output, jtbd_output, pains_output)
-                
-                if record_id:
-                    st.success("Data successfully sent to Airtable!")
-                    send_email(email, icp_output, jtbd_output, pains_output)
-                    st.success("Email sent successfully!")
-                else:
-                    st.error("Failed to send data to Airtable.")
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    icp_output, jtbd_output, pains_output = loop.run_until_complete(
+                        start_crew_process(
+                            email, product_service, price, currency, payment_frequency, selling_scope, location
+                        )
+                    )
+
+                    record_id = loop.run_until_complete(
+                        send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                    )
+                    
+                    if record_id:
+                        st.success("Data successfully sent to Airtable!")
+                        send_email(email, icp_output, jtbd_output, pains_output)
+                        st.success("Email sent successfully!")
+                    else:
+                        st.error("Failed to send data to Airtable.")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
                 st.error(traceback.format_exc())
