@@ -150,40 +150,50 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
 class HTMLToPDF(FPDF):
     def __init__(self):
         super().__init__()
-        self.set_auto_page_break(auto=True, margin=15)
+        self.add_page()
         self.set_font("Arial", size=12)
+        self.tag_stack = []
 
     def header(self):
         self.set_font("Arial", 'B', 12)
-        self.set_text_color(255, 165, 0)
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'C')
+        self.set_text_color(255, 165, 0)  # Orange color
+        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
         self.ln(20)
 
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", 'I', 8)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+    def write_html(self, html):
+        parser = HTMLParser()
+        parser.handle_data = self.handle_data
+        parser.handle_starttag = self.handle_starttag
+        parser.handle_endtag = self.handle_endtag
+        parser.feed(html)
 
-    def add_cover_page(self, title, subtitle, date):
-        self.add_page()
-        self.set_font("Arial", 'B', 24)
-        self.cell(0, 10, title, 0, 1, 'C')
-        self.ln(10)
-        self.set_font("Arial", 'I', 16)
-        self.cell(0, 10, subtitle, 0, 1, 'C')
-        self.ln(20)
-        self.set_font("Arial", 'I', 12)
-        self.cell(0, 10, date, 0, 1, 'C')
-        self.ln(20)
+    def handle_data(self, data):
+        data = data.strip()  # Strip leading/trailing whitespace
+        if data and data != '`html':  # Skip unwanted tag
+            self.multi_cell(0, 7, txt=data)
 
-    def add_section(self, title, content):
-        self.add_page()
-        self.set_font("Arial", 'B', 16)
-        self.cell(0, 10, title, 0, 1, 'L')
-        self.ln(10)
-        self.set_font("Arial", size=12)
-        self.multi_cell(0, 10, content)
+    def handle_starttag(self, tag, attrs):
+        self.tag_stack.append(tag)
+        if tag == 'b':
+            self.ln(5)  # Consistent smaller space before bold text
+            self.set_font("Arial", 'B', size=12)
+        elif tag == 'h1':
+            self.set_font("Arial", 'B', size=16)
+            self.ln(5)
+        elif tag == 'h2':
+            self.set_font("Arial", 'B', size=14)
+            self.ln(5)
+        elif tag == 'p':
+            self.set_font("Arial", size=12)
 
+    def handle_endtag(self, tag):
+        if tag in self.tag_stack:
+            self.tag_stack.remove(tag)
+        if tag in ['b', 'h1', 'h2']:
+            self.set_font("Arial", size=12)
+        if tag == 'p':  # Add a smaller newline after paragraphs
+            self.ln(5)
+            
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
