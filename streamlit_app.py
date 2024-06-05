@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9k8D1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -126,7 +126,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
     project_crew = Crew(
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
-        manager_llm=ChatOpenAI(temperature=0.1, model="gpt-4o"),
+        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
         max_rpm=6,
         process=Process.hierarchical,
         memory=True,
@@ -169,32 +169,32 @@ class RichTextPDF(FPDF):
         header2 = re.compile(r'^## (.*?)$', re.MULTILINE)
         bullet = re.compile(r'^- (.*?)$', re.MULTILINE)
 
-        text = header1.sub(r'\n<font size="16">\1</font>\n', text)
-        text = header2.sub(r'\n<font size="14">\1</font>\n', text)
+        text = header1.sub(r'\n<h1>\1</h1>\n', text)
+        text = header2.sub(r'\n<h2>\1</h2>\n', text)
         text = bold.sub(r'<b>\1</b>', text)
         text = italic.sub(r'<i>\1</i>', text)
-        text = bullet.sub(r'\n- \1', text)
+        text = bullet.sub(r'<li>\1</li>', text)
 
         self.write_text(text)
 
     def write_text(self, text):
         # Process text line by line and apply PDF formatting
         for line in text.split('\n'):
-            if line.startswith('<font size="16">'):
+            if line.startswith('<h1>'):
                 self.set_font('Arial', 'B', 16)
-                self.multi_cell(0, 10, line.replace('<font size="16">', '').replace('</font>', ''))
-            elif line.startswith('<font size="14">'):
+                self.multi_cell(0, 10, line.replace('<h1>', '').replace('</h1>', ''))
+            elif line.startswith('<h2>'):
                 self.set_font('Arial', 'B', 14)
-                self.multi_cell(0, 10, line.replace('<font size="14">', '').replace('</font>', ''))
+                self.multi_cell(0, 10, line.replace('<h2>', '').replace('</h2>', ''))
             elif line.startswith('<b>'):
                 self.set_font('Arial', 'B', 12)
                 self.multi_cell(0, 10, line.replace('<b>', '').replace('</b>', ''))
             elif line.startswith('<i>'):
                 self.set_font('Arial', 'I', 12)
                 self.multi_cell(0, 10, line.replace('<i>', '').replace('</i>', ''))
-            elif line.startswith('- '):
+            elif line.startswith('<li>'):
                 self.cell(10)
-                self.multi_cell(0, 10, line)
+                self.multi_cell(0, 10, '- ' + line.replace('<li>', '').replace('</li>', ''))
             else:
                 self.set_font('Arial', '', 12)
                 self.multi_cell(0, 10, line)
