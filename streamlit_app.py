@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0j6l9D1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0j6D1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -170,7 +170,14 @@ class HTMLToPDF(FPDF):
     def handle_data(self, data):
         data = data.strip()  # Strip leading/trailing whitespace
         if data and data != '`html':  # Skip unwanted tag
-            self.multi_cell(0, 7, txt=data)
+            if ':' in data:
+                parts = data.split(':', 1)
+                self.set_font("Arial", 'U', 12)
+                self.multi_cell(0, 7, txt=parts[0] + ':', border=0, ln=0)
+                self.set_font("Arial", size=12)
+                self.multi_cell(0, 7, txt=' ' + parts[1], border=0, ln=1)
+            else:
+                self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
@@ -216,6 +223,22 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     
     pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
     
+    # Add the plain text CSS as-is
+    css_code = """
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+    }
+    h1, h2, h3 {
+        color: #333;
+    }
+    .section {
+        margin-bottom: 20px;
+    }
+    """
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 7, txt=css_code)
+    
     pdf_output = pdf.output(dest="S").encode("latin1")
     
     # Save a copy locally for inspection
@@ -223,6 +246,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
+
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
