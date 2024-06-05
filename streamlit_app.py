@@ -1,25 +1,23 @@
-import streamlit as st
-from SL_agents import researcher, report_writer
-from SL_tasks import icp_task, jtbd_task, pains_task
-from langchain_openai import ChatOpenAI
-from langsmith import traceable
-from crewai import Crew, Process, Task
+import re
 from fpdf import FPDF
-import os
-import smtplib
+import streamlit as st
 import logging
-from datetime import datetime
+import asyncio
+import httpx
+import smtplib
+import traceback
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-import time
-import traceback
+from langchain_openai import ChatOpenAI
+from crewai import Crew, Process, Task
+from SL_agents import researcher, report_writer
+from SL_tasks import icp_task, jtbd_task, pains_task
+from langsmith import traceable
+import os
 import builtins
-import re
-import asyncio
-import httpx
-import markdown2
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -128,7 +126,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
     project_crew = Crew(
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
-        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
+        manager_llm=ChatOpenAI(temperature=0.1, model="gpt-4o"),
         max_rpm=8,
         process=Process.hierarchical,
         memory=True,
@@ -156,67 +154,62 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-class HTMLToPDF(FPDF):
+class RichTextPDF(FPDF):
     def header(self):
         self.set_font("Arial", 'B', 12)
         self.set_text_color(255, 165, 0)  # Orange color
         self.cell(0, 10, 'Swift Launch Report', 0, 1, 'R')
         self.ln(10)
 
-    def write_html(self, html):
-        # A simple HTML parser to convert some basic tags into PDF formatting
-        tag = None
-        for line in html.split('\n'):
-            if line.strip().startswith('<') and line.strip().endswith('>'):
-                if 'b>' in line:
-                    tag = 'b'
-                    self.set_font('Arial', 'B', 12)
-                elif '/b>' in line:
-                    tag = None
-                    self.set_font('Arial', '', 12)
-                elif 'h1>' in line:
-                    tag = 'h1'
-                    self.set_font('Arial', 'B', 16)
-                elif '/h1>' in line:
-                    tag = None
-                    self.set_font('Arial', '', 12)
-                elif 'h2>' in line:
-                    tag = 'h2'
-                    self.set_font('Arial', 'B', 14)
-                elif '/h2>' in line:
-                    tag = None
-                    self.set_font('Arial', '', 12)
-                elif 'ul>' in line:
-                    tag = 'ul'
-                elif '/ul>' in line:
-                    tag = None
-                elif 'li>' in line:
-                    tag = 'li'
-                elif '/li>' in line:
-                    tag = None
+    def write_rich_text(self, text):
+        # Parse and replace markdown-like syntax with PDF formatting
+        bold = re.compile(r'\*\*(.*?)\*\*')
+        italic = re.compile(r'\*(.*?)\*')
+        header1 = re.compile(r'^# (.*?)$', re.MULTILINE)
+        header2 = re.compile(r'^## (.*?)$', re.MULTILINE)
+        bullet = re.compile(r'^- (.*?)$', re.MULTILINE)
+
+        text = header1.sub(r'\n<font size="16">\1</font>\n', text)
+        text = header2.sub(r'\n<font size="14">\1</font>\n', text)
+        text = bold.sub(r'<b>\1</b>', text)
+        text = italic.sub(r'<i>\1</i>', text)
+        text = bullet.sub(r'\n- \1', text)
+
+        self.write_text(text)
+
+    def write_text(self, text):
+        # Process text line by line and apply PDF formatting
+        for line in text.split('\n'):
+            if line.startswith('<font size="16">'):
+                self.set_font('Arial', 'B', 16)
+                self.multi_cell(0, 10, line.replace('<font size="16">', '').replace('</font>', ''))
+            elif line.startswith('<font size="14">'):
+                self.set_font('Arial', 'B', 14)
+                self.multi_cell(0, 10, line.replace('<font size="14">', '').replace('</font>', ''))
+            elif line.startswith('<b>'):
+                self.set_font('Arial', 'B', 12)
+                self.multi_cell(0, 10, line.replace('<b>', '').replace('</b>', ''))
+            elif line.startswith('<i>'):
+                self.set_font('Arial', 'I', 12)
+                self.multi_cell(0, 10, line.replace('<i>', '').replace('</i>', ''))
+            elif line.startswith('- '):
+                self.cell(10)
+                self.multi_cell(0, 10, line)
             else:
-                if tag == 'li':
-                    self.cell(10)
-                    self.multi_cell(0, 10, '- ' + line)
-                else:
-                    self.multi_cell(0, 10, line)
+                self.set_font('Arial', '', 12)
+                self.multi_cell(0, 10, line)
             self.ln(5)
 
 def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = HTMLToPDF()
+    pdf = RichTextPDF()
     
     pdf.add_page()
     
-    # Convert Markdown to HTML
-    icp_html = markdown2.markdown(icp_output)
-    jtbd_html = markdown2.markdown(jtbd_output)
-    pains_html = markdown2.markdown(pains_output)
-    
-    pdf.write_html(f"<h1>ICP Output</h1>{icp_html}")
+    pdf.write_rich_text(f"# ICP Output\n\n{icp_output}\n\n")
     pdf.ln(10)
-    pdf.write_html(f"<h1>JTBD Output</h1>{jtbd_html}")
+    pdf.write_rich_text(f"# JTBD Output\n\n{jtbd_output}\n\n")
     pdf.ln(10)
-    pdf.write_html(f"<h1>Pains Output</h1>{pains_html}")
+    pdf.write_rich_text(f"# Pains Output\n\n{pains_output}\n\n")
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
