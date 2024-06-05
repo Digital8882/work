@@ -361,7 +361,7 @@ def main():
         else:
             st.error("Please fill in all the required fields.")
 
-if __name__main__":
+if __name__ == "__main__":
     main()
 
 # Restore the original print function after execution
