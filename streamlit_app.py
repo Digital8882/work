@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l93p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -128,7 +128,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=6,
+        max_rpm=8,
         process=Process.hierarchical,
         memory=True,
     )
@@ -155,30 +155,78 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-class PlainTextPDF(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.add_page()
-        self.set_font("Arial", size=12)
-    
+class RichTextPDF(FPDF):
     def header(self):
         self.set_font("Arial", 'B', 12)
         self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
-        self.ln(20)
+        self.cell(0, 10, 'Swift Launch Report', 0, 1, 'R')
+        self.ln(10)
 
-    def write_text(self, text):
-        self.set_left_margin(10)
-        self.set_right_margin(10)
-        self.set_auto_page_break(auto=True, margin=15)
-        self.multi_cell(0, 10, text)
+    def write_rich_text(self, text):
+        # Replace Markdown-like syntax with PDF formatting
+        text = text.replace("**", "<b>").replace("**", "</b>")  # Handle bold
+        text = text.replace("*", "<i>").replace("*", "</i>")    # Handle italics
+        text = re.sub(r"^# (.*?)$", r"<h1>\1</h1>", text, flags=re.MULTILINE)  # Handle headings
+        text = re.sub(r"^## (.*?)$", r"<h2>\1</h2>", text, flags=re.MULTILINE)
+        text = re.sub(r"^- (.*?)$", r"<li>\1</li>", text, flags=re.MULTILINE)  # Handle lists
+
+        self.write_html(text)
+
+    def write_html(self, html):
+        # Simplistic HTML parser to handle basic tags
+        tag = None
+        for line in html.split('\n'):
+            if line.strip().startswith('<') and line.strip().endswith('>'):
+                if 'b>' in line:
+                    tag = 'b'
+                    self.set_font('Arial', 'B', 12)
+                elif '/b>' in line:
+                    tag = None
+                    self.set_font('Arial', '', 12)
+                elif 'i>' in line:
+                    tag = 'i'
+                    self.set_font('Arial', 'I', 12)
+                elif '/i>' in line:
+                    tag = None
+                    self.set_font('Arial', '', 12)
+                elif 'h1>' in line:
+                    tag = 'h1'
+                    self.set_font('Arial', 'B', 16)
+                elif '/h1>' in line:
+                    tag = None
+                    self.set_font('Arial', '', 12)
+                elif 'h2>' in line:
+                    tag = 'h2'
+                    self.set_font('Arial', 'B', 14)
+                elif '/h2>' in line:
+                    tag = None
+                    self.set_font('Arial', '', 12)
+                elif 'ul>' in line:
+                    tag = 'ul'
+                elif '/ul>' in line:
+                    tag = None
+                elif 'li>' in line:
+                    tag = 'li'
+                elif '/li>' in line:
+                    tag = None
+            else:
+                if tag == 'li':
+                    self.cell(10)
+                    self.multi_cell(0, 10, '- ' + line)
+                else:
+                    self.multi_cell(0, 10, line)
+            self.ln(5)
 
 def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = PlainTextPDF()
+    pdf = RichTextPDF()
     
-    pdf.write_text(f"Ideal Customer Profile (ICP) for the Electric Scooter Market in the UK\n\n{icp_output}\n\n")
-    pdf.write_text(f"JTBD Output\n\n{jtbd_output}\n\n")
-    pdf.write_text(f"Pains Output\n\n{pains_output}\n\n")
+    pdf.add_page()
+    
+    pdf.write_rich_text(f"# ICP Output\n\n{icp_output}\n\n")
+    pdf.ln(10)
+    pdf.write_rich_text(f"# JTBD Output\n\n{jtbd_output}\n\n")
+    pdf.ln(10)
+    pdf.write_rich_text(f"# Pains Output\n\n{pains_output}\n\n")
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
