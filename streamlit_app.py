@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0j6llr9D1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0j6llr9Dg1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -193,7 +193,25 @@ class HTMLToPDF(FPDF):
             self.set_font("Arial", size=12)
         if tag == 'p':  # Add a smaller newline after paragraphs
             self.ln(5)
-            
+
+    def add_cover_page(self, title, subtitle, date):
+        self.add_page()
+        self.set_font("Arial", 'B', 20)
+        self.cell(0, 10, title, 0, 1, 'C')
+        self.set_font("Arial", 'B', 16)
+        self.cell(0, 10, subtitle, 0, 1, 'C')
+        self.set_font("Arial", 'I', 12)
+        self.cell(0, 10, date, 0, 1, 'C')
+        self.ln(20)
+
+    def add_section(self, title, content):
+        self.add_page()
+        self.set_font("Arial", 'B', 16)
+        self.cell(0, 10, title, 0, 1)
+        self.set_font("Arial", size=12)
+        self.multi_cell(0, 10, content)
+        self.ln(10)
+
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
@@ -229,7 +247,6 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
-
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
