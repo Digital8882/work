@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6r3fkD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l944p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -233,8 +233,8 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     
     return pdf_output
 
-# Example of the send_email function with retry mechanism
 def send_email_with_retry(email, icp_output, jtbd_output, pains_output, retries=3, delay=5):
+    logging.info("Generating PDF content")
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
@@ -259,9 +259,12 @@ def send_email_with_retry(email, icp_output, jtbd_output, pains_output, retries=
     
     for attempt in range(retries):
         try:
+            logging.info(f"Attempt {attempt + 1}: Connecting to SMTP server")
             with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
                 server.starttls()
+                logging.info("Logging in to SMTP server")
                 server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                logging.info("Sending email")
                 server.sendmail(SENDER_EMAIL, email, msg.as_string())
             logging.info("Email sent successfully")
             return True
@@ -273,7 +276,6 @@ def send_email_with_retry(email, icp_output, jtbd_output, pains_output, retries=
         time.sleep(delay)
     return False
 
-# Main function integration
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
     st.markdown(
