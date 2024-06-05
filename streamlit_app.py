@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0j6D1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0j6Dxp0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -173,9 +173,9 @@ class HTMLToPDF(FPDF):
             if ':' in data:
                 parts = data.split(':', 1)
                 self.set_font("Arial", 'U', 12)
-                self.multi_cell(0, 7, txt=parts[0] + ':', border=0, ln=0)
+                self.cell(0, 7, txt=parts[0] + ':', border=0)
                 self.set_font("Arial", size=12)
-                self.multi_cell(0, 7, txt=' ' + parts[1], border=0, ln=1)
+                self.cell(0, 7, txt=' ' + parts[1], border=0, ln=1)
             else:
                 self.multi_cell(0, 7, txt=data)
 
