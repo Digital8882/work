@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9fkD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -127,7 +127,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=6,
+        max_rpm=4,
         process=Process.hierarchical,
         memory=True,
     )
@@ -167,10 +167,12 @@ class RichTextPDF(FPDF):
         italic = re.compile(r'\*(.*?)\*')
         header1 = re.compile(r'^# (.*?)$', re.MULTILINE)
         header2 = re.compile(r'^## (.*?)$', re.MULTILINE)
+        header3 = re.compile(r'^### (.*?)$', re.MULTILINE)
         bullet = re.compile(r'^- (.*?)$', re.MULTILINE)
 
         text = header1.sub(r'\n<h1>\1</h1>\n', text)
         text = header2.sub(r'\n<h2>\1</h2>\n', text)
+        text = header3.sub(r'\n<b>\1</b>\n', text)  # Bold the headers starting with ###
         text = bold.sub(r'<b>\1</b>', text)
         text = italic.sub(r'<i>\1</i>', text)
         text = bullet.sub(r'<li>\1</li>', text)
@@ -359,7 +361,7 @@ def main():
         else:
             st.error("Please fill in all the required fields.")
 
-if __name__ == "__main__":
+if __name__main__":
     main()
 
 # Restore the original print function after execution
