@@ -1,23 +1,24 @@
-import re
-from fpdf import FPDF
 import streamlit as st
-import logging
-import asyncio
-import httpx
+from SL_agents import researcher, report_writer
+from SL_tasks import icp_task, jtbd_task, pains_task
+from langchain_openai import ChatOpenAI
+from langsmith import traceable
+from crewai import Crew, Process, Task
+from fpdf import FPDF
+import os
 import smtplib
-import traceback
+import logging
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
-from langchain_openai import ChatOpenAI
-from crewai import Crew, Process, Task
-from SL_agents import researcher, report_writer
-from SL_tasks import icp_task, jtbd_task, pains_task
-from langsmith import traceable
-import os
-import builtins
 import time
+import traceback
+import builtins
+import re
+import asyncio
+import httpx
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -29,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SLd0l6l9kD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -58,7 +59,7 @@ def patched_print(*args, **kwargs):
 builtins.print = patched_print
 
 @traceable
-async def send_to_airtable(email, icp_output, jtbd_output, pains_output, retries=3):
+async def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -73,47 +74,29 @@ async def send_to_airtable(email, icp_output, jtbd_output, pains_output, retries
         }
     }
     async with httpx.AsyncClient() as client:
-        for attempt in range(retries):
-            try:
-                response = await client.post(url, headers=headers, json=data)
-                response.raise_for_status()
-                record = response.json()
-                logging.info(f"Airtable response: {record}")
-                return record['id']
-            except httpx.HTTPStatusError as e:
-                logging.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
-            except httpx.RequestError as e:
-                logging.error(f"Request error occurred: {e}")
-            if attempt < retries - 1:
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
-    raise Exception("Failed to send data to Airtable after multiple attempts")
+        response = await client.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        record = response.json()
+        logging.info(f"Airtable response: {record}")
+        return record['id']
 
 @traceable
-async def retrieve_from_airtable(record_id, retries=3):
+async def retrieve_from_airtable(record_id):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}"
     }
     async with httpx.AsyncClient() as client:
-        for attempt in range(retries):
-            try:
-                response = await client.get(url, headers=headers)
-                response.raise_for_status()
-                record = response.json()
-                fields = record.get('fields', {})
-                logging.info("Data retrieved from Airtable successfully")
-                return (
-                    fields.get(AIRTABLE_FIELDS['icp'], ''),
-                    fields.get(AIRTABLE_FIELDS['jtbd'], ''),
-                    fields.get(AIRTABLE_FIELDS['pains'], '')
-                )
-            except httpx.HTTPStatusError as e:
-                logging.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
-            except httpx.RequestError as e:
-                logging.error(f"Request error occurred: {e}")
-            if attempt < retries - 1:
-                await asyncio.sleep(2 ** attempt)  # Exponential backoff
-    raise Exception("Failed to retrieve data from Airtable after multiple attempts")
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        record = response.json()
+        fields = record.get('fields', {})
+        logging.info("Data retrieved from Airtable successfully")
+        return (
+            fields.get(AIRTABLE_FIELDS['icp'], ''),
+            fields.get(AIRTABLE_FIELDS['jtbd'], ''),
+            fields.get(AIRTABLE_FIELDS['pains'], '')
+        )
 
 @traceable
 async def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
@@ -154,87 +137,66 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-class RichTextPDF(FPDF):
+class PlainTextPDF(FPDF):
+    def __init__(self):
+        super().__init__()
+        self.add_page()
+        self.set_font("Arial", size=12)
+    
     def header(self):
         self.set_font("Arial", 'B', 12)
         self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 1, 'R')
-        self.ln(10)
+        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
+        self.ln(20)
 
-    def write_rich_text(self, text):
-        lines = text.split('\n')
-        for line in lines:
-            if line.startswith('# '):
-                self.set_font('Arial', 'B', 16)
-                self.multi_cell(0, 10, line[2:])
-            elif line.startswith('## '):
-                self.set_font('Arial', 'B', 14)
-                self.multi_cell(0, 10, line[3:])
-            elif line.startswith('### '):
-                self.set_font('Arial', 'B', 12)
-                self.multi_cell(0, 10, line[4:])
-            elif line.startswith('- '):
-                self.set_font('Arial', '', 12)
-                self.cell(10)
-                self.multi_cell(0, 10, '- ' + line[2:])
-            else:
-                self.write_formatted_text(line)
-            self.ln(5)
+    def write_text(self, text):
+        self.set_left_margin(10)
+        self.set_right_margin(10)
+        self.set_auto_page_break(auto=True, margin=15)
+        self.multi_cell(0, 10, text)
 
-    def write_formatted_text(self, text):
-        segments = self.parse_inline_formatting(text)
-        for segment in segments:
-            if segment[0] == 'bold':
-                self.set_font('Arial', 'B', 12)
-            elif segment[0] == 'italic':
-                self.set_font('Arial', 'I', 12)
-            else:
-                self.set_font('Arial', '', 12)
-            self.multi_cell(0, 10, segment[1], 0, 'L', False)
-
-    def parse_inline_formatting(self, text):
-        segments = []
-        pos = 0
-        while True:
-            bold_match = re.search(r'\*\*(.*?)\*\*', text, pos)
-            italic_match = re.search(r'\*(.*?)\*', text, pos)
-            if not bold_match and not italic_match:
-                segments.append(('normal', text[pos:]))
-                break
-            if bold_match and (not italic_match or bold_match.start() < italic_match.start()):
-                if bold_match.start() > pos:
-                    segments.append(('normal', text[pos:bold_match.start()]))
-                segments.append(('bold', bold_match.group(1)))
-                pos = bold_match.end()
-            else:
-                if italic_match.start() > pos:
-                    segments.append(('normal', text[pos:italic_match.start()]))
-                segments.append(('italic', italic_match.group(1)))
-                pos = italic_match.end()
-        return segments
-
-# Example of generating the PDF
+@traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = RichTextPDF()
-    
+    pdf = FPDF()
     pdf.add_page()
-    
-    pdf.write_rich_text(f"# ICP Output\n\n{icp_output}\n\n")
+    pdf.set_font("Courier", size=12)  # Use a monospaced font
+
+    # Split the outputs on newlines to preserve line breaks
+    icp_output_lines = icp_output.split('\n')
+    jtbd_output_lines = jtbd_output.split('\n')
+    pains_output_lines = pains_output.split('\n')
+
+    # Add ICP output
+    pdf.multi_cell(0, 5, "ICP Output:")  # Add section header
+    for line in icp_output_lines:
+        pdf.multi_cell(0, 5, line)  # Add each line individually
+
+    # Add space between sections
     pdf.ln(10)
-    pdf.write_rich_text(f"# JTBD Output\n\n{jtbd_output}\n\n")
+
+    # Add JTBD output
+    pdf.multi_cell(0, 5, "JTBD Output:")
+    for line in jtbd_output_lines:
+        pdf.multi_cell(0, 5, line)
+
+    # Add space between sections
     pdf.ln(10)
-    pdf.write_rich_text(f"# Pains Output\n\n{pains_output}\n\n")
-    
+
+    # Add Pains output
+    pdf.multi_cell(0, 5, "Pains Output:")
+    for line in pains_output_lines:
+        pdf.multi_cell(0, 5, line)
+
     pdf_output = pdf.output(dest="S").encode("latin1")
-    
+
     # Save a copy locally for inspection
     with open("report_debug.pdf", "wb") as f:
         f.write(pdf_output)
-    
+
     return pdf_output
 
-def send_email_with_retry(email, icp_output, jtbd_output, pains_output, retries=3, delay=5):
-    logging.info("Generating PDF content")
+@traceable
+def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
@@ -257,24 +219,16 @@ def send_email_with_retry(email, icp_output, jtbd_output, pains_output, retries=
     attachment.add_header('Content-Disposition', f'attachment; filename=crewAI_result.pdf')
     msg.attach(attachment)
     
-    for attempt in range(retries):
-        try:
-            logging.info(f"Attempt {attempt + 1}: Connecting to SMTP server")
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                logging.info("Logging in to SMTP server")
-                server.login(SENDER_EMAIL, SENDER_PASSWORD)
-                logging.info("Sending email")
-                server.sendmail(SENDER_EMAIL, email, msg.as_string())
-            logging.info("Email sent successfully")
-            return True
-        except smtplib.SMTPException as e:
-            logging.error(f"SMTP error on attempt {attempt + 1}: {e}")
-        except Exception as e:
-            logging.error(f"General error on attempt {attempt + 1}: {e}")
-            logging.debug(traceback.format_exc())
-        time.sleep(delay)
-    return False
+    # Send the email
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.sendmail(SENDER_EMAIL, email, msg.as_string())
+        logging.info("Email sent successfully")
+    except Exception as e:
+        logging.error(f"Failed to send email: {e}")
+        logging.debug(traceback.format_exc())
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
@@ -369,10 +323,8 @@ def main():
                     
                     if record_id:
                         st.success("Data successfully sent to Airtable!")
-                        if send_email_with_retry(email, icp_output, jtbd_output, pains_output):
-                            st.success("Email sent successfully!")
-                        else:
-                            st.error("Failed to send email after multiple attempts.")
+                        send_email(email, icp_output, jtbd_output, pains_output)
+                        st.success("Email sent successfully!")
                     else:
                         st.error("Failed to send data to Airtable.")
             except Exception as e:
