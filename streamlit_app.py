@@ -29,7 +29,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l944p0o"
+os.environ["LANGSMITH_PROJECT"] = "SLd0l6l9kD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -127,7 +127,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=4,
+        max_rpm=6,
         process=Process.hierarchical,
         memory=True,
     )
@@ -388,4 +388,3 @@ if __name__ == "__main__":
 
 # Restore the original print function after execution
 builtins.print = original_print
-
