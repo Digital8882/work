@@ -162,46 +162,96 @@ class RichTextPDF(FPDF):
         self.ln(10)
 
     def write_rich_text(self, text):
-        bold = re.compile(r'\*\*(.*?)\*\*')
-        italic = re.compile(r'\*(.*?)\*')
-        header1 = re.compile(r'^# (.*?)$', re.MULTILINE)
-        header2 = re.compile(r'^## (.*?)$', re.MULTILINE)
-        header3 = re.compile(r'^### (.*?)$', re.MULTILINE)
-        bullet = re.compile(r'^- (.*?)$', re.MULTILINE)
-
-        text = header1.sub(r'\n<H1>\1</H1>\n', text)
-        text = header2.sub(r'\n<H2>\1</H2>\n', text)
-        text = header3.sub(r'\n<H3>\1</H3>\n', text)  # Bold the headers starting with ###
-        text = bold.sub(r'<B>\1</B>', text)
-        text = italic.sub(r'<I>\1</I>', text)
-        text = bullet.sub(r'<LI>\1</LI>', text)
-
-        self.write_text(text)
-
-    def write_text(self, text):
-        for line in text.split('\n'):
-            if line.startswith('<H1>'):
+        lines = text.split('\n')
+        for line in lines:
+            if line.startswith('# '):
                 self.set_font('Arial', 'B', 16)
-                self.multi_cell(0, 10, line.replace('<H1>', '').replace('</H1>', ''))
-            elif line.startswith('<H2>'):
+                self.multi_cell(0, 10, line[2:])
+            elif line.startswith('## '):
                 self.set_font('Arial', 'B', 14)
-                self.multi_cell(0, 10, line.replace('<H2>', '').replace('</H2>', ''))
-            elif line.startswith('<H3>'):
+                self.multi_cell(0, 10, line[3:])
+            elif line.startswith('### '):
                 self.set_font('Arial', 'B', 12)
-                self.multi_cell(0, 10, line.replace('<H3>', '').replace('</H3>', ''))
-            elif line.startswith('<B>'):
-                self.set_font('Arial', 'B', 12)
-                self.multi_cell(0, 10, line.replace('<B>', '').replace('</B>', ''))
-            elif line.startswith('<I>'):
-                self.set_font('Arial', 'I', 12)
-                self.multi_cell(0, 10, line.replace('<I>', '').replace('</I>', ''))
-            elif line.startswith('<LI>'):
+                self.multi_cell(0, 10, line[4:])
+            elif line.startswith('- '):
+                self.set_font('Arial', '', 12)
                 self.cell(10)
-                self.multi_cell(0, 10, '- ' + line.replace('<LI>', '').replace('</LI>', ''))
+                self.multi_cell(0, 10, '- ' + line[2:])
             else:
+                line = self.apply_inline_formatting(line)
                 self.set_font('Arial', '', 12)
                 self.multi_cell(0, 10, line)
             self.ln(5)
+
+    def apply_inline_formatting(self, text):
+        # Apply bold and italic formatting within the line
+        segments = []
+        pos = 0
+        while True:
+            bold_match = re.search(r'\*\*(.*?)\*\*', text, pos)
+            italic_match = re.search(r'\*(.*?)\*', text, pos)
+            if not bold_match and not italic_match:
+                segments.append(('normal', text[pos:]))
+                break
+            if bold_match and (not italic_match or bold_match.start() < italic_match.start()):
+                if bold_match.start() > pos:
+                    segments.append(('normal', text[pos:bold_match.start()]))
+                segments.append(('bold', bold_match.group(1)))
+                pos = bold_match.end()
+            else:
+                if italic_match.start() > pos:
+                    segments.append(('normal', text[pos:italic_match.start()]))
+                segments.append(('italic', italic_match.group(1)))
+                pos = italic_match.end()
+
+        formatted_text = ''
+        for style, segment in segments:
+            if style == 'bold':
+                formatted_text += f'<b>{segment}</b>'
+            elif style == 'italic':
+                formatted_text += f'<i>{segment}</i>'
+            else:
+                formatted_text += segment
+        return formatted_text
+
+    def multi_cell(self, w, h, txt, border=0, align='', fill=False):
+        # Handle inline formatting tags within the text
+        if '<b>' in txt or '<i>' in txt:
+            formatted_segments = self.parse_formatting(txt)
+            for segment in formatted_segments:
+                if segment[0] == 'normal':
+                    self.set_font('Arial', '', 12)
+                elif segment[0] == 'bold':
+                    self.set_font('Arial', 'B', 12)
+                elif segment[0] == 'italic':
+                    self.set_font('Arial', 'I', 12)
+                super().multi_cell(w, h, segment[1], border, align, fill)
+        else:
+            super().multi_cell(w, h, txt, border, align, fill)
+
+    def parse_formatting(self, text):
+        segments = []
+        while text:
+            if text.startswith('<b>'):
+                end = text.find('</b>')
+                if end == -1:
+                    segments.append(('normal', text))
+                    break
+                segments.append(('bold', text[3:end]))
+                text = text[end+4:]
+            elif text.startswith('<i>'):
+                end = text.find('</i>')
+                if end == -1:
+                    segments.append(('normal', text))
+                    break
+                segments.append(('italic', text[3:end]))
+                text = text[end+4:]
+            else:
+                end = min((text.find(tag) for tag in ['<b>', '<i>'] if text.find(tag) != -1), default=len(text))
+                segments.append(('normal', text[:end]))
+                text = text[end:]
+        return segments
+
 
 # Example of generating the PDF
 def generate_pdf(icp_output, jtbd_output, pains_output):
