@@ -233,9 +233,8 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     
     return pdf_output
 
-
-@traceable
-def send_email(email, icp_output, jtbd_output, pains_output):
+# Example of the send_email function with retry mechanism
+def send_email_with_retry(email, icp_output, jtbd_output, pains_output, retries=3, delay=5):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
@@ -258,17 +257,23 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     attachment.add_header('Content-Disposition', f'attachment; filename=crewAI_result.pdf')
     msg.attach(attachment)
     
-    # Send the email
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.sendmail(SENDER_EMAIL, email, msg.as_string())
-        logging.info("Email sent successfully")
-    except Exception as e:
-        logging.error(f"Failed to send email: {e}")
-        logging.debug(traceback.format_exc())
+    for attempt in range(retries):
+        try:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                server.sendmail(SENDER_EMAIL, email, msg.as_string())
+            logging.info("Email sent successfully")
+            return True
+        except smtplib.SMTPException as e:
+            logging.error(f"SMTP error on attempt {attempt + 1}: {e}")
+        except Exception as e:
+            logging.error(f"General error on attempt {attempt + 1}: {e}")
+            logging.debug(traceback.format_exc())
+        time.sleep(delay)
+    return False
 
+# Main function integration
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
     st.markdown(
@@ -362,8 +367,10 @@ def main():
                     
                     if record_id:
                         st.success("Data successfully sent to Airtable!")
-                        send_email(email, icp_output, jtbd_output, pains_output)
-                        st.success("Email sent successfully!")
+                        if send_email_with_retry(email, icp_output, jtbd_output, pains_output):
+                            st.success("Email sent successfully!")
+                        else:
+                            st.error("Failed to send email after multiple attempts.")
                     else:
                         st.error("Failed to send data to Airtable.")
             except Exception as e:
