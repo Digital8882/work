@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 SMTP_SERVER = 'smtp-mail.outlook.com'; SMTP_PORT = 587; SENDER_EMAIL = 'info@swiftlaunch.biz'; SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1dp0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -116,7 +116,7 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=4,
+        max_rpm=8,
         process=Process.hierarchical,
         memory=True,
     )
@@ -143,75 +143,30 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
-class HTMLToPDF(FPDF):
+class PlainTextPDF(FPDF):
     def __init__(self):
         super().__init__()
         self.add_page()
         self.set_font("Arial", size=12)
-        self.tag_stack = []
-
+    
     def header(self):
         self.set_font("Arial", 'B', 12)
         self.set_text_color(255, 165, 0)  # Orange color
         self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
         self.ln(20)
 
-    def write_html(self, html):
-        parser = HTMLParser()
-        parser.handle_data = self.handle_data
-        parser.handle_starttag = self.handle_starttag
-        parser.handle_endtag = self.handle_endtag
-        parser.feed(html)
+    def write_text(self, text):
+        self.set_left_margin(10)
+        self.set_right_margin(10)
+        self.set_auto_page_break(auto=True, margin=15)
+        self.multi_cell(0, 10, text)
 
-    def handle_data(self, data):
-        data = data.strip()  # Strip leading/trailing whitespace
-        if data and data != '`html':  # Skip unwanted tag
-            self.multi_cell(0, 7, txt=data)
-
-    def handle_starttag(self, tag, attrs):
-        self.tag_stack.append(tag)
-        if tag == 'b':
-            self.ln(5)  # Consistent smaller space before bold text
-            self.set_font("Arial", 'B', size=12)
-        elif tag == 'h1':
-            self.set_font("Arial", 'B', size=16)
-        elif tag == 'h2':
-            self.set_font("Arial", 'B', size=14)
-        elif tag == 'p':
-            self.set_font("Arial", size=12)
-
-    def handle_endtag(self, tag):
-        if tag in self.tag_stack:
-            self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2']:
-            self.set_font("Arial", size=12)
-        if tag == 'p':  # Add a smaller newline after paragraphs
-            self.ln(5)
-
-def process_bold_text(text):
-    return re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
-
-# Updated generate_pdf function
-@traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = HTMLToPDF()
-    
-    # Process the outputs to remove unwanted markdown syntax and convert bold text
-    icp_output_clean = process_bold_text(icp_output.replace('```html', '').replace('```', '').strip())
-    jtbd_output_clean = process_bold_text(jtbd_output.replace('```html', '').replace('```', '').strip())
-    pains_output_clean = process_bold_text(pains_output.replace('```html', '').replace('```', '').strip())
-    
-    pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
-    
-    # Add space between sections
-    pdf.ln(5)
-    
-    pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output_clean}</p>")
-    
-    # Add space between sections
-    pdf.ln(5)
-    
-    pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
+    pdf = PlainTextPDF()
+
+    pdf.write_text(f"Ideal Customer Profile (ICP) for the Electric Scooter Market in the UK\n\n{icp_output}\n\n")
+    pdf.write_text(f"JTBD Output\n\n{jtbd_output}\n\n")
+    pdf.write_text(f"Pains Output\n\n{pains_output}\n\n")
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
@@ -220,6 +175,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
     
     return pdf_output
+
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
