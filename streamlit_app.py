@@ -31,7 +31,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0j6ll9D1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0j6llr9D1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -150,15 +150,43 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
 class HTMLToPDF(FPDF):
     def __init__(self):
         super().__init__()
-        self.add_page()
+        self.set_auto_page_break(auto=True, margin=15)
         self.set_font("Arial", size=12)
         self.tag_stack = []
 
     def header(self):
         self.set_font("Arial", 'B', 12)
-        self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
+        self.set_text_color(255, 165, 0)
+        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'C')
         self.ln(20)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+    def add_cover_page(self, title, subtitle, date):
+        self.add_page()
+        self.set_font("Arial", 'B', 24)
+        self.cell(0, 10, title, 0, 1, 'C')
+        self.ln(10)
+        self.set_font("Arial", 'I', 16)
+        self.cell(0, 10, subtitle, 0, 1, 'C')
+        self.ln(20)
+        self.set_font("Arial", 'I', 12)
+        self.cell(0, 10, date, 0, 1, 'C')
+        self.ln(20)
+
+    def add_section(self, title, content, color):
+        self.add_page()
+        self.set_text_color(*color)  # Set color for the section line
+        self.line(10, 10, 10, 287)  # Vertical line in the left margin
+        self.set_text_color(0, 0, 0)  # Reset color for text
+        self.set_font("Arial", 'B', 16)
+        self.cell(0, 10, title, 0, 1, 'L')
+        self.ln(10)
+        self.set_font("Arial", size=12)
+        self.multi_cell(0, 10, content)
 
     def write_html(self, html):
         parser = HTMLParser()
@@ -168,14 +196,13 @@ class HTMLToPDF(FPDF):
         parser.feed(html)
 
     def handle_data(self, data):
-        data = data.strip()  # Strip leading/trailing whitespace
-        if data and data != '`html':  # Skip unwanted tag
+        data = data.strip()
+        if data and data != '`html':
             self.multi_cell(0, 7, txt=data)
 
     def handle_starttag(self, tag, attrs):
         self.tag_stack.append(tag)
         if tag == 'b':
-            self.ln(5)  # Consistent smaller space before bold text
             self.set_font("Arial", 'B', size=12)
         elif tag == 'h1':
             self.set_font("Arial", 'B', size=16)
@@ -185,36 +212,54 @@ class HTMLToPDF(FPDF):
             self.ln(5)
         elif tag == 'p':
             self.set_font("Arial", size=12)
+        elif tag == 'table':
+            self.set_font("Arial", size=12)
+            self.ln(5)
+        elif tag == 'th':
+            self.set_font("Arial", 'B', size=12)
+            self.cell(40, 10, 'Header', 1)
+        elif tag == 'td':
+            self.set_font("Arial", size=12)
+            self.cell(40, 10, 'Cell', 1)
 
     def handle_endtag(self, tag):
         if tag in self.tag_stack:
             self.tag_stack.remove(tag)
         if tag in ['b', 'h1', 'h2']:
             self.set_font("Arial", size=12)
-        if tag == 'p':  # Add a smaller newline after paragraphs
+        if tag == 'p':
+            self.ln(5)
+        if tag == 'table':
+            self.ln(10)
+        if tag == 'th':
+            self.ln(5)
+        if tag == 'td':
             self.ln(5)
 
-# Updated generate_pdf function
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
+    
+    # Add cover page
+    pdf.add_cover_page(
+        title="Swift Launch Report",
+        subtitle="Customer Profile Analysis",
+        date=datetime.now().strftime("%B %d, %Y")
+    )
     
     # Process the outputs to remove unwanted markdown syntax
     icp_output_clean = icp_output.replace('```html', '').replace('```', '').strip()
     jtbd_output_clean = jtbd_output.replace('```html', '').replace('```', '').strip()
     pains_output_clean = pains_output.replace('```html', '').replace('```', '').strip()
     
-    pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
+    # Add ICP section
+    pdf.add_section("ICP Output", icp_output_clean, (255, 0, 0))  # Red line
     
-    # Add space between sections
-    pdf.ln(5)
+    # Add JTBD section
+    pdf.add_section("JTBD Output", jtbd_output_clean, (0, 255, 0))  # Green line
     
-    pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output_clean}</p>")
-    
-    # Add space between sections
-    pdf.ln(5)
-    
-    pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
+    # Add Pains section
+    pdf.add_section("Pains Output", pains_output_clean, (0, 0, 255))  # Blue line
     
     pdf_output = pdf.output(dest="S").encode("latin1")
     
