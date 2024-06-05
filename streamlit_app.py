@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 SMTP_SERVER = 'smtp-mail.outlook.com'; SMTP_PORT = 587; SENDER_EMAIL = 'info@swiftlaunch.biz'; SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9jD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9kD1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -188,15 +188,18 @@ class HTMLToPDF(FPDF):
         if tag == 'p':  # Add a smaller newline after paragraphs
             self.ln(5)
 
+def process_bold_text(text):
+    return re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+
 # Updated generate_pdf function
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = HTMLToPDF()
     
-    # Process the outputs to remove unwanted markdown syntax
-    icp_output_clean = icp_output.replace('```html', '').replace('```', '').strip()
-    jtbd_output_clean = jtbd_output.replace('```html', '').replace('```', '').strip()
-    pains_output_clean = pains_output.replace('```html', '').replace('```', '').strip()
+    # Process the outputs to remove unwanted markdown syntax and convert bold text
+    icp_output_clean = process_bold_text(icp_output.replace('```html', '').replace('```', '').strip())
+    jtbd_output_clean = process_bold_text(jtbd_output.replace('```html', '').replace('```', '').strip())
+    pains_output_clean = process_bold_text(pains_output.replace('```html', '').replace('```', '').strip())
     
     pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
     
