@@ -217,7 +217,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
     return pdf_output
 
 @traceable
-def send_email(email, icp_output, jtbd_output, pains_output):
+def send_email(email, icp_output, jtbd_output, pains_output, retries=3):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
@@ -240,16 +240,21 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     attachment.add_header('Content-Disposition', f'attachment; filename=crewAI_result.pdf')
     msg.attach(attachment)
     
-    # Send the email
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.sendmail(SENDER_EMAIL, email, msg.as_string())
-        logging.info("Email sent successfully")
-    except Exception as e:
-        logging.error(f"Failed to send email: {e}")
-        logging.debug(traceback.format_exc())
+    for attempt in range(retries):
+        try:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SENDER_EMAIL, SENDER_PASSWORD)
+                server.sendmail(SENDER_EMAIL, email, msg.as_string())
+            logging.info("Email sent successfully")
+            return True
+        except Exception as e:
+            logging.error(f"Failed to send email on attempt {attempt + 1}: {e}")
+            logging.debug(traceback.format_exc())
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+    return False
+
 
 def main():
     # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
@@ -326,35 +331,39 @@ def main():
         location = st.text_input("Location")
 
     if st.button("Submit"):
-        if email and product_service and price:
-            try:
-                with st.spinner("Generating customer profile..."):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    
-                    icp_output, jtbd_output, pains_output = loop.run_until_complete(
-                        start_crew_process(
-                            email, product_service, price, currency, payment_frequency, selling_scope, location
-                        )
-                    )
+    if email and product_service and price:
+        try:
+            with st.spinner("Generating customer profile..."):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-                    record_id = loop.run_until_complete(
-                        send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                icp_output, jtbd_output, pains_output = loop.run_until_complete(
+                    start_crew_process(
+                        email, product_service, price, currency, payment_frequency, selling_scope, location
                     )
-                    
-                    if record_id:
-                        st.success("Data successfully sent to Airtable!")
-                        send_email(email, icp_output, jtbd_output, pains_output)
+                )
+
+                record_id = loop.run_until_complete(
+                    send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                )
+
+                if record_id:
+                    st.success("Data successfully sent to Airtable!")
+                    email_sent = send_email(email, icp_output, jtbd_output, pains_output)
+                    if email_sent:
                         st.success("Email sent successfully!")
                     else:
-                        st.error("Failed to send data to Airtable.")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-                st.error(traceback.format_exc())
-                logging.error(f"An error occurred: {e}")
-                logging.debug(traceback.format_exc())
-        else:
-            st.error("Please fill in all the required fields.")
+                        st.error("Failed to send email after multiple attempts.")
+                else:
+                    st.error("Failed to send data to Airtable.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+            st.error(traceback.format_exc())
+            logging.error(f"An error occurred: {e}")
+            logging.debug(traceback.format_exc())
+    else:
+        st.error("Please fill in all the required fields.")
+
 
 if __name__ == "__main__":
     main()
