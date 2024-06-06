@@ -197,6 +197,10 @@ def add_markdown_text(pdf, text):
     add_markdown_text(pdf, pains_output)
 
     pdf_output = pdf.output(dest="S").encode("latin1")
+if pdf_output:
+    return pdf_output
+else:
+    return "Error generating PDF"
 
     # Save a copy locally for inspection
     with open("report_debug.pdf", "wb") as f:
@@ -204,9 +208,11 @@ def add_markdown_text(pdf, text):
 
     return pdf_output
 
-@traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
-    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
+    pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)
+    if pdf_content == "Error generating PDF":
+        logging.error("Failed to generate PDF")
+        return
     
     # Email details
     subject = 'Swift Launch ICP'
