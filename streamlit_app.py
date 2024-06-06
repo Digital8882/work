@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9uukDou1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDou1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -138,10 +138,6 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             raise
 
 
-
-
-import re
-
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", custom_font=False):
     pdf = FPDF()
@@ -223,7 +219,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
             line = line[3:].strip()
         elif line.startswith('##'):
             pdf.set_font(font_name, style='B')
-            line = line[2:].trip()
+            line = line[2:].strip()
         else:
             pdf.set_font(font_name, style='')  # Reset to regular font
 
