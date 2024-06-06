@@ -334,9 +334,8 @@ def main():
     location = ""
     if selling_scope == "Locally":
         location = st.text_input("Location")
-
-    if st.button("Submit"):
-    if email and product_service and price:
+if st.button("Submit"):
+if email and product_service and price:
         try:
             with st.spinner("Generating customer profile..."):
                 loop = asyncio.new_event_loop()
