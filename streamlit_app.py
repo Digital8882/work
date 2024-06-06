@@ -152,28 +152,31 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", c
 
     # Helper function to add formatted text
     def add_markdown_text(pdf, text):
-        lines = text.split('\n')
-        for line in lines:
-            if line.startswith('###'):
-                pdf.set_font(font_name, style='B', size=16)
-                pdf.multi_cell(0, 10, line[3:].strip())
-            elif line.startswith('##'):
-                pdf.set_font(font_name, style='B', size=14)
-                pdf.multi_cell(0, 10, line[2:].strip())
-            elif line.startswith('#'):
-                pdf.set_font(font_name, style='B', size=12)
-                pdf.multi_cell(0, 10, line[1:].strip())
-            else:
-                # Set font style to bold for text between **
-                bold_parts = re.split(r'(\*\*.*?\*\*)', line)
-                for part in bold_parts:
-                    if part.startswith('**') and part.endswith('**'):
-                        pdf.set_font(font_name, style='B')
-                        pdf.multi_cell(0, 5, part[2:-2])
-                    else:
-                        pdf.set_font(font_name, style='')
-                        pdf.multi_cell(0, 5, part)
-            pdf.ln(5)  # Add line break after each line
+    lines = text.split('\n')
+    for line in lines:
+        if line.startswith('###'):
+            pdf.set_font(font_name, style='B', size=16)
+            pdf.multi_cell(0, 10, line[3:].strip())
+        elif line.startswith('##'):
+            pdf.set_font(font_name, style='B', size=14)
+            pdf.multi_cell(0, 10, line[2:].strip())
+        elif line.startswith('#'):
+            pdf.set_font(font_name, style='B', size=12)
+            pdf.multi_cell(0, 10, line[1:].strip())
+        elif line.startswith('-'):
+            pdf.set_font(font_name, style='')
+            pdf.multi_cell(0, 5, ' ' + line[1:].strip(), 0, 'L')  # Left align lines starting with '-'
+        else:
+            # Set font style to bold for text between **
+            bold_parts = re.split(r'(\*\*.*?\*\*)', line)
+            for part in bold_parts:
+                if part.startswith('**') and part.endswith('**'):
+                    pdf.set_font(font_name, style='B')
+                    pdf.multi_cell(0, 5, part[2:-2])
+                else:
+                    pdf.set_font(font_name, style='')
+                    pdf.multi_cell(0, 5, part)
+        pdf.ln(5)  # Add line break after each line
 
     # Add ICP output
     pdf.multi_cell(0, 10, "ICP Output:")
