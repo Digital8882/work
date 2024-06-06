@@ -41,7 +41,7 @@ AIRTABLE_FIELDS = {
 
 # Set environment variables for Langsmith
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttipDou1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l655ttDou1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = LANGSMITH_API_KEY
 
@@ -84,7 +84,7 @@ async def send_to_airtable(email, icp_output, jtbd_output, pains_output):
 
 # Function to start the crew process
 @traceable
-async def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
+def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
     task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
     if selling_scope == "Locally":
         task_description += f" Location: {location}."
@@ -103,7 +103,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
     for attempt in range(retries):
         try:
             logging.info(f"Starting crew process, attempt {attempt + 1}")
-            results = await project_crew.kickoff()
+            results = project_crew.kickoff()
             # Access task outputs directly
             icp_output = icp_task.output.exported_output if hasattr(icp_task.output, 'exported_output') else "No ICP output"
             jtbd_output = jtbd_task.output.exported_output if hasattr(jtbd_task.output, 'exported_output') else "No JTBD output"
@@ -223,10 +223,6 @@ def send_email(email, icp_output, jtbd_output, pains_output):
         logging.error(f"Exception: An unexpected error occurred while sending email to {email}: {e}")
         logging.debug(traceback.format_exc())
 
-# Helper function to run async tasks
-def run_async_task(coro):
-    return asyncio.run(coro)
-
 # Main function
 def main():
     # Streamlit UI
@@ -258,14 +254,12 @@ def main():
         if email and product_service and price:
             try:
                 with st.spinner("Generating customer profile..."):
-                    icp_output, jtbd_output, pains_output = run_async_task(
-                        start_crew_process(
-                            email, product_service, price, currency, payment_frequency, selling_scope, location
-                        )
+                    icp_output, jtbd_output, pains_output = start_crew_process(
+                        email, product_service, price, currency, payment_frequency, selling_scope, location
                     )
 
                     try:
-                        record_id = run_async_task(
+                        record_id = asyncio.run(
                             send_to_airtable(email, icp_output, jtbd_output, pains_output)
                         )
                         if record_id:
