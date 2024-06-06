@@ -150,8 +150,8 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", c
 
     pdf.set_font(font_name, size=12)  # Use the specified font
 
-    # Helper function to add formatted text
-    def add_markdown_text(pdf, text):
+# Helper function to add formatted text
+def add_markdown_text(pdf, text):
     lines = text.split('\n')
     for line in lines:
         if line.startswith('###'):
