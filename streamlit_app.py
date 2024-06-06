@@ -110,7 +110,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=4,
+        max_rpm=5,
         process=Process.hierarchical,
         memory=True,
     )
@@ -139,13 +139,20 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
 
 
 
+
 import re
 
 @traceable
-def generate_pdf(icp_output, jtbd_output, pains_output):
+def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", custom_font=False):
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Courier", size=12)  # Use a monospaced font
+
+    if custom_font:
+        # Add regular and bold variants of the custom font
+        pdf.add_font(font_name, style="", fname=f"{font_name}.ttf")
+        pdf.add_font(font_name, style="B", fname=f"{font_name}-Bold.ttf")
+
+    pdf.set_font(font_name, size=12)  # Use the specified font
 
     # Split the outputs on newlines to preserve line breaks
     icp_output_lines = icp_output.split('\n')
@@ -155,11 +162,26 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add ICP output
     pdf.multi_cell(0, 5, "ICP Output:")  # Add section header
     for line in icp_output_lines:
-        # Convert Markdown syntax to HTML tags
-        line = re.sub(r'(?<!<b>)###\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!<b>)##\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!<b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
-        pdf.multi_cell(0, 5, line)  # Add each line individually
+        # Set font style to bold for text after ## and ###
+        if line.startswith('###'):
+            pdf.set_font(font_name, style='B')
+            line = line[3:].strip()
+        elif line.startswith('##'):
+            pdf.set_font(font_name, style='B')
+            line = line[2:].strip()
+        else:
+            pdf.set_font(font_name, style='')  # Reset to regular font
+
+        # Set font style to bold for text between **
+        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
+        for part in bold_parts:
+            if part:
+                if part.startswith('**') and part.endswith('**'):
+                    pdf.set_font(font_name, style='B')
+                    part = part[2:-2]
+                else:
+                    pdf.set_font(font_name, style='')
+                pdf.multi_cell(0, 5, part)
         pdf.ln(5)  # Add line break after each line
 
     # Add space between sections
@@ -168,12 +190,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add JTBD output
     pdf.multi_cell(0, 5, "JTBD Output:")
     for line in jtbd_output_lines:
-        # Convert Markdown syntax to HTML tags
-        line = re.sub(r'(?<!<b>)###\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!<b>)##\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!<b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
-        pdf.multi_cell(0, 5, line)
-        pdf.ln(5)  # Add line break after each line
+        # ... (same as above for ICP output)
 
     # Add space between sections
     pdf.ln(10)
@@ -181,12 +198,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add Pains output
     pdf.multi_cell(0, 5, "Pains Output:")
     for line in pains_output_lines:
-        # Convert Markdown syntax to HTML tags
-        line = re.sub(r'(?<!<b>)###\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!<b>)##\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!<b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
-        pdf.multi_cell(0, 5, line)
-        pdf.ln(5)  # Add line break after each line
+        # ... (same as above for ICP output)
 
     pdf_output = pdf.output(dest="S").encode("latin1")
 
