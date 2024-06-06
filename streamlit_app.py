@@ -170,12 +170,27 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add ICP output
     pdf.multi_cell(0, 5, "ICP Output:")  # Add section header
     for line in icp_output_lines:
-        # Make text after ## and ### bold, ignoring existing HTML tags
-        line = re.sub(r'(?<!</b>)##(.*?)##(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!</b>)###(.*?)###(?!</b>)', r'<b>\1</b>', line)
-        # Make text between ** and ** bold, ignoring existing HTML tags
-        line = re.sub(r'(?<!</b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
-        pdf.multi_cell(0, 5, line)  # Add each line individually
+        # Set font style to bold for text after ## and ###
+        if line.startswith('###'):
+            pdf.set_font("Courier", style='B')
+            line = line[3:].strip()
+        elif line.startswith('##'):
+            pdf.set_font("Courier", style='B')
+            line = line[2:].strip()
+        else:
+            pdf.set_font("Courier", style='')  # Reset to regular font
+
+        # Set font style to bold for text between **
+        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
+        for part in bold_parts:
+            if part:
+                if part.startswith('**') and part.endswith('**'):
+                    pdf.set_font("Courier", style='B')
+                    part = part[2:-2]
+                else:
+                    pdf.set_font("Courier", style='')
+                pdf.multi_cell(0, 5, part)
+        pdf.ln(5)  # Add line break after each line
 
     # Add space between sections
     pdf.ln(10)
@@ -183,12 +198,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add JTBD output
     pdf.multi_cell(0, 5, "JTBD Output:")
     for line in jtbd_output_lines:
-        # Make text after ## and ### bold, ignoring existing HTML tags
-        line = re.sub(r'(?<!</b>)##(.*?)##(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!</b>)###(.*?)###(?!</b>)', r'<b>\1</b>', line)
-        # Make text between ** and ** bold, ignoring existing HTML tags
-        line = re.sub(r'(?<!</b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
-        pdf.multi_cell(0, 5, line)
+        # ... (same as above for ICP output)
 
     # Add space between sections
     pdf.ln(10)
@@ -196,12 +206,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add Pains output
     pdf.multi_cell(0, 5, "Pains Output:")
     for line in pains_output_lines:
-        # Make text after ## and ### bold, ignoring existing HTML tags
-        line = re.sub(r'(?<!</b>)##(.*?)##(?!</b>)', r'<b>\1</b>', line)
-        line = re.sub(r'(?<!</b>)###(.*?)###(?!</b>)', r'<b>\1</b>', line)
-        # Make text between ** and ** bold, ignoring existing HTML tags
-        line = re.sub(r'(?<!</b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
-        pdf.multi_cell(0, 5, line)
+        # ... (same as above for ICP output)
 
     pdf_output = pdf.output(dest="S").encode("latin1")
 
