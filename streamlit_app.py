@@ -23,26 +23,27 @@ import httpx
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Email configuration
-SMTP_SERVER = 'smtp-mail.outlook.com'
-SMTP_PORT = 587
-SENDER_EMAIL = 'info@swiftlaunch.biz'
-SENDER_PASSWORD = 'Lovelife1#'
+# Load sensitive configurations from environment variables
+SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp-mail.outlook.com')
+SMTP_PORT = os.getenv('SMTP_PORT', 587)
+SENDER_EMAIL = os.getenv('SENDER_EMAIL', 'info@swiftlaunch.biz')
+SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', 'Lovelife1#')
+LANGSMITH_API_KEY = os.getenv('LANGSMITH_API_KEY', 'your-langsmith-api-key')
+AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY', 'your-airtable-api-key')
+AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID', 'appPcWNUeei7MNMCj')
+AIRTABLE_TABLE_NAME = os.getenv('AIRTABLE_TABLE_NAME', 'tblaMtAcnVa4nwnby')
 
-os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6loDotu1p0o"
-os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ["LANGSMITH_API_KEY"] = "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"
-
-# Airtable configuration
-AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
-AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
-AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
 AIRTABLE_FIELDS = {
     'icp': 'fldL1kkrGflCtOxwa',
     'jtbd': 'fldFFAnoI7to8ZXgu',
     'pains': 'fldyazmtByhtLBEds'
 }
+
+# Set environment variables for Langsmith
+os.environ["LANGSMITH_TRACING_V2"] = "true"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDpp1p0o"
+os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGSMITH_API_KEY"] = LANGSMITH_API_KEY
 
 # Save the original print function
 original_print = builtins.print
@@ -58,6 +59,7 @@ def patched_print(*args, **kwargs):
 # Patch the print function
 builtins.print = patched_print
 
+# Function to send data to Airtable
 @traceable
 async def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
@@ -80,24 +82,7 @@ async def send_to_airtable(email, icp_output, jtbd_output, pains_output):
         logging.info(f"Airtable response: {record}")
         return record['id']
 
-@traceable
-async def retrieve_from_airtable(record_id):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}"
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        response.raise_for_status()
-        record = response.json()
-        fields = record.get('fields', {})
-        logging.info("Data retrieved from Airtable successfully")
-        return (
-            fields.get(AIRTABLE_FIELDS['icp'], ''),
-            fields.get(AIRTABLE_FIELDS['jtbd'], ''),
-            fields.get(AIRTABLE_FIELDS['pains'], '')
-        )
-
+# Function to start the crew process
 @traceable
 async def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
     task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
@@ -118,7 +103,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
     for attempt in range(retries):
         try:
             logging.info(f"Starting crew process, attempt {attempt + 1}")
-            results = project_crew.kickoff()
+            results = await project_crew.kickoff()
             # Access task outputs directly
             icp_output = icp_task.output.exported_output if hasattr(icp_task.output, 'exported_output') else "No ICP output"
             jtbd_output = jtbd_task.output.exported_output if hasattr(jtbd_task.output, 'exported_output') else "No JTBD output"
@@ -137,16 +122,11 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-
+# Function to generate the PDF
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", custom_font=False):
     pdf = FPDF()
     pdf.add_page()
-
-    if custom_font:
-        # Add regular and bold variants of the custom font
-        pdf.add_font(font_name, style="", fname=f"{font_name}.ttf")
-        pdf.add_font(font_name, style="B", fname=f"{font_name}-Bold.ttf")
 
     pdf.set_font(font_name, size=12)  # Use the specified font
 
@@ -169,10 +149,10 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", c
                 for part in bold_parts:
                     if part.startswith('**') and part.endswith('**'):
                         pdf.set_font(font_name, style='B')
-                        pdf.cell(0, 10, part[2:-2])
+                        pdf.multi_cell(0, 10, part[2:-2])
                     else:
                         pdf.set_font(font_name, style='')
-                        pdf.cell(0, 10, part)
+                        pdf.multi_cell(0, 10, part)
                 # Align dashes to the left
                 if line.strip().startswith('-'):
                     pdf.set_font(font_name, style='')
@@ -205,8 +185,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", c
 
     return pdf_output
 
-
-@traceable
+# Function to send the email
 def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
@@ -232,67 +211,23 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     
     # Send the email
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=30) as server:
             server.starttls()
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.sendmail(SENDER_EMAIL, email, msg.as_string())
-        logging.info("Email sent successfully")
+        logging.info("Email sent successfully to %s", email)
+    except smtplib.SMTPException as e:
+        logging.error(f"SMTPException: Failed to send email to {email}: {e}")
+        logging.debug(traceback.format_exc())
     except Exception as e:
-        logging.error(f"Failed to send email: {e}")
+        logging.error(f"Exception: An unexpected error occurred while sending email to {email}: {e}")
         logging.debug(traceback.format_exc())
 
+# Main function
 def main():
-    # Inject custom CSS for dynamic iframe height adjustment and hiding Streamlit branding
-    st.markdown(
-        """
-        <style>
-        @import url('style.css');
-        .stApp {
-            background-color: #000000;
-        }
-        .title {
-            color: #DE6A1D;
-            font-size: 3em;
-        }
-        .subtitle {
-            color: #DE6A1D;
-            font-size: 1.2em;
-        }
-        input {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
-        textarea {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
-        select {
-            background-color: #1A1A1A !important;
-            color: #FFFFFF !important;
-        }
-        footer {visibility: hidden;}
-        .css-1v0mbdj {padding-top: 0 !important;}
-        .block-container {padding-top: 20px !important;}
-        .stApp a:first-child {display: none;}
-        .css-15zrgzn {display: none;}
-        .css-eczf16 {display: none;}
-        .css-jn99sy {display: none;}
-        div[data-testid="stToolbar"] { display: none; }
-        </style>
-        <script>
-        function sendHeight() {
-            const height = document.documentElement.scrollHeight;
-            window.parent.postMessage({ height: height }, '*');
-        }
-
-        window.addEventListener('load', sendHeight);
-        window.addEventListener('resize', sendHeight);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
-    st.markdown('<h1 class="title">Swift Launch Report</h1>', unsafe_allow_html=True)
+    # Streamlit UI
+    st.markdown("# Swift Launch Report")
+    st.markdown("### Please fill in the details below to generate your report")
 
     col1, col2 = st.columns(2)
     first_name = col1.text_input("First Name")
@@ -319,28 +254,29 @@ def main():
         if email and product_service and price:
             try:
                 with st.spinner("Generating customer profile..."):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    
-                    icp_output, jtbd_output, pains_output = loop.run_until_complete(
+                    icp_output, jtbd_output, pains_output = asyncio.run(
                         start_crew_process(
                             email, product_service, price, currency, payment_frequency, selling_scope, location
                         )
                     )
 
-                    record_id = loop.run_until_complete(
-                        send_to_airtable(email, icp_output, jtbd_output, pains_output)
-                    )
-                    
-                    if record_id:
-                        st.success("Data successfully sent to Airtable!")
-                        send_email(email, icp_output, jtbd_output, pains_output)
-                        st.success("Email sent successfully!")
-                    else:
-                        st.error("Failed to send data to Airtable.")
+                    try:
+                        record_id = asyncio.run(
+                            send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                        )
+                        if record_id:
+                            st.success("Data successfully sent to Airtable!")
+                        else:
+                            st.error("Failed to send data to Airtable.")
+                    except Exception as e:
+                        st.error(f"An error occurred while sending data to Airtable: {e}")
+                        logging.error(f"An error occurred while sending data to Airtable: {e}")
+                        logging.debug(traceback.format_exc())
+
+                    send_email(email, icp_output, jtbd_output, pains_output)
+                    st.success("Email sent successfully!")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
-                st.error(traceback.format_exc())
                 logging.error(f"An error occurred: {e}")
                 logging.debug(traceback.format_exc())
         else:
