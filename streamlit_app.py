@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDotu1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6loDotu1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -139,7 +139,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
 
 
 @traceable
-def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", custom_font=False):
+def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", custom_font=False):
     pdf = FPDF()
     pdf.add_page()
 
@@ -169,25 +169,29 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
                 for part in bold_parts:
                     if part.startswith('**') and part.endswith('**'):
                         pdf.set_font(font_name, style='B')
-                        pdf.multi_cell(0, 5, part[2:-2])
+                        pdf.cell(0, 10, part[2:-2])
                     else:
                         pdf.set_font(font_name, style='')
-                        pdf.multi_cell(0, 5, part)
-            pdf.ln(5)  # Add line break after each line
+                        pdf.cell(0, 10, part)
+                # Align dashes to the left
+                if line.strip().startswith('-'):
+                    pdf.set_font(font_name, style='')
+                    pdf.cell(0, 10, line.strip())
+                pdf.ln(5)  # Add line break after each line
 
     # Add ICP output
     pdf.multi_cell(0, 10, "ICP Output:")
     add_markdown_text(pdf, icp_output)
 
     # Add space between sections
-    pdf.ln(10)
+    pdf.ln(5)
 
     # Add JTBD output
     pdf.multi_cell(0, 10, "JTBD Output:")
     add_markdown_text(pdf, jtbd_output)
 
     # Add space between sections
-    pdf.ln(10)
+    pdf.ln(5)
 
     # Add Pains output
     pdf.multi_cell(0, 10, "Pains Output:")
@@ -200,6 +204,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
         f.write(pdf_output)
 
     return pdf_output
+
 
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
