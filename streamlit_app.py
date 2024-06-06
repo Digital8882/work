@@ -23,27 +23,26 @@ import httpx
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Load sensitive configurations from environment variables
-SMTP_SERVER = os.getenv('SMTP_SERVER', 'smtp-mail.outlook.com')
-SMTP_PORT = os.getenv('SMTP_PORT', 587)
-SENDER_EMAIL = os.getenv('SENDER_EMAIL', 'info@swiftlaunch.biz')
-SENDER_PASSWORD = os.getenv('SENDER_PASSWORD', 'Lovelife1#')
-LANGSMITH_API_KEY = os.getenv('LANGSMITH_API_KEY', 'your-langsmith-api-key')
-AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY', 'your-airtable-api-key')
-AIRTABLE_BASE_ID = os.getenv('AIRTABLE_BASE_ID', 'appPcWNUeei7MNMCj')
-AIRTABLE_TABLE_NAME = os.getenv('AIRTABLE_TABLE_NAME', 'tblaMtAcnVa4nwnby')
+# Email configuration
+SMTP_SERVER = 'smtp-mail.outlook.com'
+SMTP_PORT = 587
+SENDER_EMAIL = 'info@swiftlaunch.biz'
+SENDER_PASSWORD = 'Lovelife1#'
 
+os.environ["LANGSMITH_TRACING_V2"] = "true"
+os.environ["LANGSMITH_PROJECT"] = "SL006645671"
+os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
+os.environ["LANGSMITH_API_KEY"] = "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"
+
+# Airtable configuration
+AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
+AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
+AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
 AIRTABLE_FIELDS = {
     'icp': 'fldL1kkrGflCtOxwa',
     'jtbd': 'fldFFAnoI7to8ZXgu',
     'pains': 'fldyazmtByhtLBEds'
 }
-
-# Set environment variables for Langsmith
-os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l655ttDou1p0o"
-os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
-os.environ["LANGSMITH_API_KEY"] = LANGSMITH_API_KEY
 
 # Save the original print function
 original_print = builtins.print
