@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDotu1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0llu1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -145,8 +145,18 @@ def format_output(output):
         lines = section.split("\n")
         if lines:
             header = lines[0].strip()
-            content = " ".join(line.strip() for line in lines[1:])
-            formatted_output += f"{header} {content}\n\n"
+            content_lines = []
+            for line in lines[1:]:
+                stripped_line = line.strip()
+                if stripped_line.startswith("-"):
+                    content_lines.append(stripped_line)
+                else:
+                    if content_lines:
+                        content_lines[-1] += " " + stripped_line
+                    else:
+                        content_lines.append(stripped_line)
+            content = "\n".join(content_lines)
+            formatted_output += f"{header}\n{content}\n\n"
     return formatted_output.strip()
 
 @traceable
@@ -165,7 +175,6 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
     jtbd_output = format_output(jtbd_output)
     pains_output = format_output(pains_output)
 
-    # Helper function to add formatted text
     def add_markdown_text(pdf, text):
         lines = text.split('\n')
         for line in lines:
@@ -178,8 +187,10 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
             elif line.startswith('#'):
                 pdf.set_font(font_name, style='B', size=12)
                 pdf.multi_cell(0, 10, line[1:].strip())
+            elif line.startswith('-'):
+                pdf.set_font(font_name, style='')
+                pdf.cell(0, 10, line.strip(), ln=1)
             else:
-                # Set font style to bold for text between **
                 bold_parts = re.split(r'(\*\*.*?\*\*)', line)
                 for part in bold_parts:
                     if part.startswith('**') and part.endswith('**'):
@@ -188,29 +199,24 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
                     else:
                         pdf.set_font(font_name, style='')
                         pdf.multi_cell(0, 5, part)
-            pdf.ln(5)  # Add line break after each line
+            pdf.ln(2.5)  # Reduce space between lines to 50%
 
     # Add ICP output
     pdf.multi_cell(0, 10, "ICP Output:")
     add_markdown_text(pdf, icp_output)
 
-    # Add space between sections
-    pdf.ln(10)
-
-    # Add JTBD output
+    # Add new page for JTBD output
+    pdf.add_page()
     pdf.multi_cell(0, 10, "JTBD Output:")
     add_markdown_text(pdf, jtbd_output)
 
-    # Add space between sections
-    pdf.ln(10)
-
-    # Add Pains output
+    # Add new page for Pains output
+    pdf.add_page()
     pdf.multi_cell(0, 10, "Pains Output:")
     add_markdown_text(pdf, pains_output)
 
     pdf_output = pdf.output(dest="S").encode("latin1")
 
-    # Save a copy locally for inspection
     with open("report_debug.pdf", "wb") as f:
         f.write(pdf_output)
 
@@ -330,38 +336,38 @@ def main():
         location = st.text_input("Location")
 
     if st.button("Submit"):
-        if email and product_service and price:
-            try:
-                with st.spinner("Generating customer profile..."):
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    
-                    icp_output, jtbd_output, pains_output = loop.run_until_complete(
-                        start_crew_process(
-                            email, product_service, price, currency, payment_frequency, selling_scope, location
-                        )
-                    )
+    if email and product_service and price:
+        try:
+            with st.spinner("Generating customer profile..."):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
 
-                    record_id = loop.run_until_complete(
-                        send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                icp_output, jtbd_output, pains_output = loop.run_until_complete(
+                    start_crew_process(
+                        email, product_service, price, currency, payment_frequency, selling_scope, location
                     )
-                    
-                    if record_id:
-                        st.success("Data successfully sent to Airtable!")
-                        email_sent = send_email(email, icp_output, jtbd_output, pains_output)
-                        if email_sent:
-                            st.success("Email sent successfully!")
-                        else:
-                            st.error("Failed to send email after multiple attempts.")
+                )
+
+                record_id = loop.run_until_complete(
+                    send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                )
+
+                if record_id:
+                    st.success("Data successfully sent to Airtable!")
+                    email_sent = send_email(email, icp_output, jtbd_output, pains_output)
+                    if email_sent:
+                        st.success("Email sent successfully!")
                     else:
-                        st.error("Failed to send data to Airtable.")
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-                st.error(traceback.format_exc())
-                logging.error(f"An error occurred: {e}")
-                logging.debug(traceback.format_exc())
-        else:
-            st.error("Please fill in all the required fields.")
+                        st.error("Failed to send email after multiple attempts.")
+                else:
+                    st.error("Failed to send data to Airtable.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+            st.error(traceback.format_exc())
+            logging.error(f"An error occurred: {e}")
+            logging.debug(traceback.format_exc())
+    else:
+        st.error("Please fill in all the required fields.")
 
 if __name__ == "__main__":
     main()
