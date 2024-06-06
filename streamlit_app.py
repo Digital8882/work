@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDzzuuotu1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9tiozuuotu1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -137,7 +137,6 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Times", custom_font=False):
     pdf = FPDF()
@@ -162,7 +161,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Times", custo
                 pdf.multi_cell(0, 10, line[2:].strip())
             elif line.startswith('#'):
                 pdf.set_font(font_name, style='B', size=12)
-                pdf.multi_cell(0, 10, line[1:].strip())
+                pdf.multi_cell(0, 10, line[1:].trip())
             elif line.startswith('-'):
                 pdf.set_font(font_name, style='')
                 pdf.multi_cell(0, 5, ' ' + line[1:].strip(), 0, 'L')  # Left align lines starting with '-'
@@ -170,7 +169,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Times", custo
                 # Set font style to bold for text between **
                 bold_parts = re.split(r'(\*\*.*?\*\*)', line)
                 for part in bold_parts:
-                    if part.startswith('**') and part.endswith('**'):
+                    if part.startswith('**') and part endswith('**'):
                         pdf.set_font(font_name, style='B')
                         pdf.multi_cell(0, 5, part[2:-2])
                     else:
