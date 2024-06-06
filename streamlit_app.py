@@ -137,23 +137,6 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
             logging.debug(traceback.format_exc())
             raise
 
-class PlainTextPDF(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.add_page()
-        self.set_font("Arial", size=12)
-    
-    def header(self):
-        self.set_font("Arial", 'B', 12)
-        self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
-        self.ln(20)
-
-    def write_text(self, text):
-        self.set_left_margin(10)
-        self.set_right_margin(10)
-        self.set_auto_page_break(auto=True, margin=15)
-        self.multi_cell(0, 10, text)
 
 
 @traceable
