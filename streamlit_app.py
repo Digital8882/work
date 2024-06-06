@@ -139,7 +139,7 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
 
 
 @traceable
-def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Helvetica", custom_font=False):
+def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Times", custom_font=False):
     pdf = FPDF()
     pdf.add_page()
 
