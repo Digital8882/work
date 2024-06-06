@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9uukD1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9uukDou1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -139,6 +139,8 @@ async def start_crew_process(email, product_service, price, currency, payment_fr
 
 
 
+import re
+
 @traceable
 def generate_pdf(icp_output, jtbd_output, pains_output):
     pdf = FPDF()
@@ -153,26 +155,11 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add ICP output
     pdf.multi_cell(0, 5, "ICP Output:")  # Add section header
     for line in icp_output_lines:
-        # Set font style to bold for text after ## and ###
-        if line.startswith('###'):
-            pdf.set_font("Courier", style='B')
-            line = line[3:].strip()
-        elif line.startswith('##'):
-            pdf.set_font("Courier", style='B')
-            line = line[2:].strip()
-        else:
-            pdf.set_font("Courier", style='')  # Reset to regular font
-
-        # Set font style to bold for text between **
-        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
-        for part in bold_parts:
-            if part:
-                if part.startswith('**') and part.endswith('**'):
-                    pdf.set_font("Courier", style='B')
-                    part = part[2:-2]
-                else:
-                    pdf.set_font("Courier", style='')
-                pdf.multi_cell(0, 5, part)
+        # Convert Markdown syntax to HTML tags
+        line = re.sub(r'(?<!<b>)###\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!<b>)##\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!<b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
+        pdf.multi_cell(0, 5, line)  # Add each line individually
         pdf.ln(5)  # Add line break after each line
 
     # Add space between sections
@@ -181,26 +168,11 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add JTBD output
     pdf.multi_cell(0, 5, "JTBD Output:")
     for line in jtbd_output_lines:
-        # Set font style to bold for text after ## and ###
-        if line.startswith('###'):
-            pdf.set_font("Courier", style='B')
-            line = line[3:].strip()
-        elif line.startswith('##'):
-            pdf.set_font("Courier", style='B')
-            line = line[2:].strip()
-        else:
-            pdf.set_font("Courier", style='')  # Reset to regular font
-
-        # Set font style to bold for text between **
-        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
-        for part in bold_parts:
-            if part:
-                if part.startswith('**') and part.endswith('**'):
-                    pdf.set_font("Courier", style='B')
-                    part = part[2:-2]
-                else:
-                    pdf.set_font("Courier", style='')
-                pdf.multi_cell(0, 5, part)
+        # Convert Markdown syntax to HTML tags
+        line = re.sub(r'(?<!<b>)###\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!<b>)##\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!<b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
+        pdf.multi_cell(0, 5, line)
         pdf.ln(5)  # Add line break after each line
 
     # Add space between sections
@@ -209,26 +181,11 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
     # Add Pains output
     pdf.multi_cell(0, 5, "Pains Output:")
     for line in pains_output_lines:
-        # Set font style to bold for text after ## and ###
-        if line.startswith('###'):
-            pdf.set_font("Courier", style='B')
-            line = line[3:].strip()
-        elif line.startswith('##'):
-            pdf.set_font("Courier", style='B')
-            line = line[2:].strip()
-        else:
-            pdf.set_font("Courier", style='')  # Reset to regular font
-
-        # Set font style to bold for text between **
-        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
-        for part in bold_parts:
-            if part:
-                if part.startswith('**') and part.endswith('**'):
-                    pdf.set_font("Courier", style='B')
-                    part = part[2:-2]
-                else:
-                    pdf.set_font("Courier", style='')
-                pdf.multi_cell(0, 5, part)
+        # Convert Markdown syntax to HTML tags
+        line = re.sub(r'(?<!<b>)###\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!<b>)##\s*(.*?)(?!</b>)', r'<b>\1</b>', line)
+        line = re.sub(r'(?<!<b>)\*\*(.*?)\*\*(?!</b>)', r'<b>\1</b>', line)
+        pdf.multi_cell(0, 5, line)
         pdf.ln(5)  # Add line break after each line
 
     pdf_output = pdf.output(dest="S").encode("latin1")
@@ -238,6 +195,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output):
         f.write(pdf_output)
 
     return pdf_output
+    
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
