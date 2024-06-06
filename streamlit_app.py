@@ -334,39 +334,40 @@ def main():
     location = ""
     if selling_scope == "Locally":
         location = st.text_input("Location")
-if st.button("Submit"):
-    if email and product_service and price:
-        try:
-            with st.spinner("Generating customer profile..."):
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
 
-                icp_output, jtbd_output, pains_output = loop.run_until_complete(
-                    start_crew_process(
-                        email, product_service, price, currency, payment_frequency, selling_scope, location
+    if st.button("Submit"):
+        if email and product_service and price:
+            try:
+                with st.spinner("Generating customer profile..."):
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    icp_output, jtbd_output, pains_output = loop.run_until_complete(
+                        start_crew_process(
+                            email, product_service, price, currency, payment_frequency, selling_scope, location
+                        )
                     )
-                )
 
-                record_id = loop.run_until_complete(
-                    send_to_airtable(email, icp_output, jtbd_output, pains_output)
-                )
-
-                if record_id:
-                    st.success("Data successfully sent to Airtable!")
-                    email_sent = send_email(email, icp_output, jtbd_output, pains_output)
-                    if email_sent:
-                        st.success("Email sent successfully!")
+                    record_id = loop.run_until_complete(
+                        send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                    )
+                    
+                    if record_id:
+                        st.success("Data successfully sent to Airtable!")
+                        email_sent = send_email(email, icp_output, jtbd_output, pains_output)
+                        if email_sent:
+                            st.success("Email sent successfully!")
+                        else:
+                            st.error("Failed to send email after multiple attempts.")
                     else:
-                        st.error("Failed to send email after multiple attempts.")
-                else:
-                    st.error("Failed to send data to Airtable.")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-            st.error(traceback.format_exc())
-            logging.error(f"An error occurred: {e}")
-            logging.debug(traceback.format_exc())
-    else:
-        st.error("Please fill in all the required fields.")
+                        st.error("Failed to send data to Airtable.")
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+                st.error(traceback.format_exc())
+                logging.error(f"An error occurred: {e}")
+                logging.debug(traceback.format_exc())
+        else:
+            st.error("Please fill in all the required fields.")
 
 if __name__ == "__main__":
     main()
