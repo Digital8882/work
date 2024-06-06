@@ -30,7 +30,7 @@ SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDou1p0o"
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDotu1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
@@ -150,89 +150,48 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
 
     pdf.set_font(font_name, size=12)  # Use the specified font
 
-    # Split the outputs on newlines to preserve line breaks
-    icp_output_lines = icp_output.split('\n')
-    jtbd_output_lines = jtbd_output.split('\n')
-    pains_output_lines = pains_output.split('\n')
+    # Helper function to add formatted text
+    def add_markdown_text(pdf, text):
+        lines = text.split('\n')
+        for line in lines:
+            if line.startswith('###'):
+                pdf.set_font(font_name, style='B', size=16)
+                pdf.multi_cell(0, 10, line[3:].strip())
+            elif line.startswith('##'):
+                pdf.set_font(font_name, style='B', size=14)
+                pdf.multi_cell(0, 10, line[2:].strip())
+            elif line.startswith('#'):
+                pdf.set_font(font_name, style='B', size=12)
+                pdf.multi_cell(0, 10, line[1:].strip())
+            else:
+                # Set font style to bold for text between **
+                bold_parts = re.split(r'(\*\*.*?\*\*)', line)
+                for part in bold_parts:
+                    if part.startswith('**') and part.endswith('**'):
+                        pdf.set_font(font_name, style='B')
+                        pdf.multi_cell(0, 5, part[2:-2])
+                    else:
+                        pdf.set_font(font_name, style='')
+                        pdf.multi_cell(0, 5, part)
+            pdf.ln(5)  # Add line break after each line
 
     # Add ICP output
-    pdf.multi_cell(0, 5, "ICP Output:")  # Add section header
-    for line in icp_output_lines:
-        # Set font style to bold for text after ## and ###
-        if line.startswith('###'):
-            pdf.set_font(font_name, style='B')
-            line = line[3:].strip()
-        elif line.startswith('##'):
-            pdf.set_font(font_name, style='B')
-            line = line[2:].strip()
-        else:
-            pdf.set_font(font_name, style='')  # Reset to regular font
-
-        # Set font style to bold for text between **
-        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
-        for part in bold_parts:
-            if part:
-                if part.startswith('**') and part.endswith('**'):
-                    pdf.set_font(font_name, style='B')
-                    part = part[2:-2]
-                else:
-                    pdf.set_font(font_name, style='')
-                pdf.multi_cell(0, 5, part)
-        pdf.ln(5)  # Add line break after each line
+    pdf.multi_cell(0, 10, "ICP Output:")
+    add_markdown_text(pdf, icp_output)
 
     # Add space between sections
     pdf.ln(10)
 
     # Add JTBD output
-    pdf.multi_cell(0, 5, "JTBD Output:")
-    for line in jtbd_output_lines:
-        # Process each line similarly to ICP output
-        if line.startswith('###'):
-            pdf.set_font(font_name, style='B')
-            line = line[3:].strip()
-        elif line.startswith('##'):
-            pdf.set_font(font_name, style='B')
-            line = line[2:].strip()
-        else:
-            pdf.set_font(font_name, style='')  # Reset to regular font
-
-        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
-        for part in bold_parts:
-            if part:
-                if part.startswith('**') and part.endswith('**'):
-                    pdf.set_font(font_name, style='B')
-                    part = part[2:-2]
-                else:
-                    pdf.set_font(font_name, style='')
-                pdf.multi_cell(0, 5, part)
-        pdf.ln(5)  # Add line break after each line
+    pdf.multi_cell(0, 10, "JTBD Output:")
+    add_markdown_text(pdf, jtbd_output)
 
     # Add space between sections
     pdf.ln(10)
 
     # Add Pains output
-    pdf.multi_cell(0, 5, "Pains Output:")
-    for line in pains_output_lines:
-        # Process each line similarly to ICP output
-        if line.startswith('###'):
-            pdf.set_font(font_name, style='B')
-            line = line[3:].strip()
-        elif line.startswith('##'):
-            pdf.set_font(font_name, style='B')
-            line = line[2:].strip()
-        else:
-            pdf.set_font(font_name, style='')  # Reset to regular font
-
-        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
-        for part in bold_parts:
-            if part:
-                if part.startswith('**') and part.endswith('**'):
-                    pdf.set_font(font_name, style='B')
-                    part = part[2:-2]
-                else:
-                    pdf.set_font(font_name, style='')
-                pdf.multi_cell(0, 5, part)
-        pdf.ln(5)  # Add line break after each line
+    pdf.multi_cell(0, 10, "Pains Output:")
+    add_markdown_text(pdf, pains_output)
 
     pdf_output = pdf.output(dest="S").encode("latin1")
 
