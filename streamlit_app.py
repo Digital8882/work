@@ -190,7 +190,26 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
     # Add JTBD output
     pdf.multi_cell(0, 5, "JTBD Output:")
     for line in jtbd_output_lines:
-        # ... (same as above for ICP output)
+        # Process each line similarly to ICP output
+        if line.startswith('###'):
+            pdf.set_font(font_name, style='B')
+            line = line[3:].strip()
+        elif line.startswith('##'):
+            pdf.set_font(font_name, style='B')
+            line = line[2:].strip()
+        else:
+            pdf.set_font(font_name, style='')  # Reset to regular font
+
+        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
+        for part in bold_parts:
+            if part:
+                if part.startswith('**') and part.endswith('**'):
+                    pdf.set_font(font_name, style='B')
+                    part = part[2:-2]
+                else:
+                    pdf.set_font(font_name, style='')
+                pdf.multi_cell(0, 5, part)
+        pdf.ln(5)  # Add line break after each line
 
     # Add space between sections
     pdf.ln(10)
@@ -198,7 +217,26 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
     # Add Pains output
     pdf.multi_cell(0, 5, "Pains Output:")
     for line in pains_output_lines:
-        # ... (same as above for ICP output)
+        # Process each line similarly to ICP output
+        if line.startswith('###'):
+            pdf.set_font(font_name, style='B')
+            line = line[3:].strip()
+        elif line.startswith('##'):
+            pdf.set_font(font_name, style='B')
+            line = line[2:].trip()
+        else:
+            pdf.set_font(font_name, style='')  # Reset to regular font
+
+        bold_parts = re.split(r'\*\*(.*?)\*\*', line)
+        for part in bold_parts:
+            if part:
+                if part.startswith('**') and part.endswith('**'):
+                    pdf.set_font(font_name, style='B')
+                    part = part[2:-2]
+                else:
+                    pdf.set_font(font_name, style='')
+                pdf.multi_cell(0, 5, part)
+        pdf.ln(5)  # Add line break after each line
 
     pdf_output = pdf.output(dest="S").encode("latin1")
 
@@ -207,7 +245,7 @@ def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", cus
         f.write(pdf_output)
 
     return pdf_output
-    
+
 @traceable
 def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
