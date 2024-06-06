@@ -7,7 +7,6 @@ from crewai import Crew, Process, Task
 from fpdf import FPDF
 import os
 import smtplib
-import requests
 import logging
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
@@ -18,22 +17,25 @@ import time
 import traceback
 import builtins
 import re
-import urllib.parse  # For URL encoding
-from html.parser import HTMLParser
+import asyncio
+import httpx
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Email configuration
-SMTP_SERVER = 'smtp-mail.outlook.com'; SMTP_PORT = 587; SENDER_EMAIL = 'info@swiftlaunch.biz'; SENDER_PASSWORD = 'Lovelife1#'
+SMTP_SERVER = 'smtp-mail.outlook.com'
+SMTP_PORT = 587
+SENDER_EMAIL = 'info@swiftlaunch.biz'
+SENDER_PASSWORD = 'Lovelife1#'
 
 os.environ["LANGSMITH_TRACING_V2"] = "true"
-os.environ["LANGSMITH_PROJECT"] = "SL0l6l9D1p0o"
-os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com" 
+os.environ["LANGSMITH_PROJECT"] = "SL0l6l9ttDotu1p0o"
+os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = "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"
 
 # Airtable configuration
-AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e' 
+AIRTABLE_API_KEY = 'patnWOUVJR780iDNN.de9fb8264698287a5b4206fad59a99871d1fc6dddb4a94e7e7770ab3bcef014e'
 AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
 AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
 AIRTABLE_FIELDS = {
@@ -57,7 +59,7 @@ def patched_print(*args, **kwargs):
 builtins.print = patched_print
 
 @traceable
-def send_to_airtable(email, icp_output, jtbd_output, pains_output):
+async def send_to_airtable(email, icp_output, jtbd_output, pains_output):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}",
@@ -71,26 +73,21 @@ def send_to_airtable(email, icp_output, jtbd_output, pains_output):
             AIRTABLE_FIELDS['pains']: pains_output,
         }
     }
-    try:
-        logging.info(f"Sending data to Airtable: {data}")
-        response = requests.post(url, headers=headers, json=data)
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers, json=data)
         response.raise_for_status()
         record = response.json()
         logging.info(f"Airtable response: {record}")
         return record['id']
-    except Exception as e:
-        logging.error(f"Failed to update Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None
 
 @traceable
-def retrieve_from_airtable(record_id):
+async def retrieve_from_airtable(record_id):
     url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
     headers = {
         "Authorization": f"Bearer {AIRTABLE_API_KEY}"
     }
-    try:
-        response = requests.get(url, headers=headers)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
         response.raise_for_status()
         record = response.json()
         fields = record.get('fields', {})
@@ -100,23 +97,20 @@ def retrieve_from_airtable(record_id):
             fields.get(AIRTABLE_FIELDS['jtbd'], ''),
             fields.get(AIRTABLE_FIELDS['pains'], '')
         )
-    except Exception as e:
-        logging.error(f"Failed to retrieve data from Airtable: {e}")
-        logging.debug(traceback.format_exc())
-        return None, None, None
 
 @traceable
-def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
+async def start_crew_process(email, product_service, price, currency, payment_frequency, selling_scope, location, retries=3):
     task_description = f"New task from {email} selling {product_service} at {price} {currency} with payment frequency {payment_frequency}."
-    if selling_scope == "Locally": task_description += f" Location: {location}."
-    
+    if selling_scope == "Locally":
+        task_description += f" Location: {location}."
+
     new_task = Task(description=task_description, expected_output="...")
 
     project_crew = Crew(
         tasks=[new_task, icp_task, jtbd_task, pains_task],
         agents=[researcher, report_writer],
         manager_llm=ChatOpenAI(temperature=0, model="gpt-4o"),
-        max_rpm=4,
+        max_rpm=5,
         process=Process.hierarchical,
         memory=True,
     )
@@ -143,79 +137,83 @@ def start_crew_process(email, product_service, price, currency, payment_frequenc
             logging.debug(traceback.format_exc())
             raise
 
-class HTMLToPDF(FPDF):
-    def __init__(self):
-        super().__init__()
-        self.add_page()
-        self.set_font("Arial", size=12)
-        self.tag_stack = []
-
-    def header(self):
-        self.set_font("Arial", 'B', 12)
-        self.set_text_color(255, 165, 0)  # Orange color
-        self.cell(0, 10, 'Swift Launch Report', 0, 0, 'R')
-        self.ln(20)
-
-    def write_html(self, html):
-        parser = HTMLParser()
-        parser.handle_data = self.handle_data
-        parser.handle_starttag = self.handle_starttag
-        parser.handle_endtag = self.handle_endtag
-        parser.feed(html)
-
-    def handle_data(self, data):
-        data = data.strip()  # Strip leading/trailing whitespace
-        if data and data != '`html':  # Skip unwanted tag
-            self.multi_cell(0, 7, txt=data)
-
-    def handle_starttag(self, tag, attrs):
-        self.tag_stack.append(tag)
-        if tag == 'b':
-            self.ln(5)  # Consistent smaller space before bold text
-            self.set_font("Arial", 'B', size=12)
-        elif tag == 'h1':
-            self.set_font("Arial", 'B', size=16)
-        elif tag == 'h2':
-            self.set_font("Arial", 'B', size=14)
-        elif tag == 'p':
-            self.set_font("Arial", size=12)
-
-    def handle_endtag(self, tag):
-        if tag in self.tag_stack:
-            self.tag_stack.remove(tag)
-        if tag in ['b', 'h1', 'h2']:
-            self.set_font("Arial", size=12)
-        if tag == 'p':  # Add a smaller newline after paragraphs
-            self.ln(5)
-
-# Updated generate_pdf function
 @traceable
-def generate_pdf(icp_output, jtbd_output, pains_output):
-    pdf = HTMLToPDF()
-    
-    # Process the outputs to remove unwanted markdown syntax
-    icp_output_clean = icp_output.replace('```html', '').replace('```', '').strip()
-    jtbd_output_clean = jtbd_output.replace('```html', '').replace('```', '').strip()
-    pains_output_clean = pains_output.replace('```html', '').replace('```', '').strip()
-    
-    pdf.write_html(f"<h1>ICP Output</h1><p>{icp_output_clean}</p>")
-    
+def format_output(output):
+    formatted_output = ""
+    sections = output.split("\n\n")
+    for section in sections:
+        lines = section.split("\n")
+        if lines:
+            header = lines[0].strip()
+            content = " ".join(line.strip() for line in lines[1:])
+            formatted_output += f"{header} {content}\n\n"
+    return formatted_output.strip()
+
+@traceable
+def generate_pdf(icp_output, jtbd_output, pains_output, font_name="Courier", custom_font=False):
+    pdf = FPDF()
+    pdf.add_page()
+
+    if custom_font:
+        # Add regular and bold variants of the custom font
+        pdf.add_font(font_name, style="", fname=f"{font_name}.ttf")
+        pdf.add_font(font_name, style="B", fname=f"{font_name}-Bold.ttf")
+
+    pdf.set_font(font_name, size=12)  # Use the specified font
+
+    icp_output = format_output(icp_output)
+    jtbd_output = format_output(jtbd_output)
+    pains_output = format_output(pains_output)
+
+    # Helper function to add formatted text
+    def add_markdown_text(pdf, text):
+        lines = text.split('\n')
+        for line in lines:
+            if line.startswith('###'):
+                pdf.set_font(font_name, style='B', size=16)
+                pdf.multi_cell(0, 10, line[3:].strip())
+            elif line.startswith('##'):
+                pdf.set_font(font_name, style='B', size=14)
+                pdf.multi_cell(0, 10, line[2:].strip())
+            elif line.startswith('#'):
+                pdf.set_font(font_name, style='B', size=12)
+                pdf.multi_cell(0, 10, line[1:].strip())
+            else:
+                # Set font style to bold for text between **
+                bold_parts = re.split(r'(\*\*.*?\*\*)', line)
+                for part in bold_parts:
+                    if part.startswith('**') and part.endswith('**'):
+                        pdf.set_font(font_name, style='B')
+                        pdf.multi_cell(0, 5, part[2:-2])
+                    else:
+                        pdf.set_font(font_name, style='')
+                        pdf.multi_cell(0, 5, part)
+            pdf.ln(5)  # Add line break after each line
+
+    # Add ICP output
+    pdf.multi_cell(0, 10, "ICP Output:")
+    add_markdown_text(pdf, icp_output)
+
     # Add space between sections
-    pdf.ln(5)
-    
-    pdf.write_html(f"<h1>JTBD Output</h1><p>{jtbd_output_clean}</p>")
-    
+    pdf.ln(10)
+
+    # Add JTBD output
+    pdf.multi_cell(0, 10, "JTBD Output:")
+    add_markdown_text(pdf, jtbd_output)
+
     # Add space between sections
-    pdf.ln(5)
-    
-    pdf.write_html(f"<h1>Pains Output</h1><p>{pains_output_clean}</p>")
-    
+    pdf.ln(10)
+
+    # Add Pains output
+    pdf.multi_cell(0, 10, "Pains Output:")
+    add_markdown_text(pdf, pains_output)
+
     pdf_output = pdf.output(dest="S").encode("latin1")
-    
+
     # Save a copy locally for inspection
     with open("report_debug.pdf", "wb") as f:
         f.write(pdf_output)
-    
+
     return pdf_output
 
 @traceable
@@ -223,11 +221,14 @@ def send_email(email, icp_output, jtbd_output, pains_output):
     pdf_content = generate_pdf(icp_output, jtbd_output, pains_output)  # Ensure all three arguments are passed
     
     # Email details
-    subject = 'Swift Launch ICP'; body = 'Please find attached the result Ideal customer profile.'
+    subject = 'Swift Launch ICP'
+    body = 'Please find attached the result Ideal customer profile.'
     
     # Create a multipart message
     msg = MIMEMultipart()
-    msg['From'] = SENDER_EMAIL; msg['To'] = email; msg['Subject'] = subject
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = email
+    msg['Subject'] = subject
     
     # Attach the body with the msg instance
     msg.attach(MIMEText(body, 'plain'))
@@ -304,7 +305,8 @@ def main():
     st.markdown('<h1 class="title">Swift Launch Report</h1>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    first_name = col1.text_input("First Name"); email = col2.text_input("Email")
+    first_name = col1.text_input("First Name")
+    email = col2.text_input("Email")
 
     if len(email) > 0 and "@" not in email:
         st.error("Please enter a valid email address")
@@ -312,29 +314,40 @@ def main():
     product_service = st.text_input("Product/Service being sold")
     
     col3, col4 = st.columns(2)
-    price = col3.text_input("Price"); currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
+    price = col3.text_input("Price")
+    currency = col4.selectbox("Currency", ["USD", "EUR", "GBP", "JPY", "AUD"])
     
     col5, col6 = st.columns(2)
-    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"]); selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
+    payment_frequency = col5.selectbox("Payment Frequency", ["One-time", "Monthly", "Yearly"])
+    selling_scope = col6.selectbox("Are you selling Locally or Globally?", ["Locally", "Globally"])
 
     location = ""
-    if selling_scope == "Locally": location = st.text_input("Location")
+    if selling_scope == "Locally":
+        location = st.text_input("Location")
 
     if st.button("Submit"):
         if email and product_service and price:
             try:
                 with st.spinner("Generating customer profile..."):
-                    icp_output, jtbd_output, pains_output = start_crew_process(
-                        email, product_service, price, currency, payment_frequency, selling_scope, location)
-                
-                record_id = send_to_airtable(email, icp_output, jtbd_output, pains_output)
-                
-                if record_id:
-                    st.success("Data successfully sent to Airtable!")
-                    send_email(email, icp_output, jtbd_output, pains_output)
-                    st.success("Email sent successfully!")
-                else:
-                    st.error("Failed to send data to Airtable.")
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    
+                    icp_output, jtbd_output, pains_output = loop.run_until_complete(
+                        start_crew_process(
+                            email, product_service, price, currency, payment_frequency, selling_scope, location
+                        )
+                    )
+
+                    record_id = loop.run_until_complete(
+                        send_to_airtable(email, icp_output, jtbd_output, pains_output)
+                    )
+                    
+                    if record_id:
+                        st.success("Data successfully sent to Airtable!")
+                        send_email(email, icp_output, jtbd_output, pains_output)
+                        st.success("Email sent successfully!")
+                    else:
+                        st.error("Failed to send data to Airtable.")
             except Exception as e:
                 st.error(f"An error occurred: {e}")
                 st.error(traceback.format_exc())
