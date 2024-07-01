@@ -29,6 +29,10 @@ SMTP_PORT = 587
 SENDER_EMAIL = 'info@swiftlaunch.biz'
 SENDER_PASSWORD = 'Lovelife1#'
 
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY')
+
+os.environ["ANTHROPIC_API_KEY"] = ANTHROPIC_API_KEY
+
 os.environ["LANGSMITH_TRACING_V2"] = "true"
 os.environ["LANGSMITH_PROJECT"] = "SL0llu1p0o"
 os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
