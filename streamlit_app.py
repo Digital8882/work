@@ -41,16 +41,7 @@ os.environ["LANGSMITH_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY")  # Securely fetch
 
 # Airtable configuration
-AIRTABLE_API_KEY = os.getenv('AIRTABLE_API_KEY')  # Securely fetch from environment variables
-AIRTABLE_BASE_ID = 'appPcWNUeei7MNMCj'
-AIRTABLE_TABLE_NAME = 'tblaMtAcnVa4nwnby'
-AIRTABLE_FIELDS = {
-    'market_research': 'fldMarketResearch',
-    'data_analysis': 'fldDataAnalysis',
-    'persona_development': 'fldPersonaDevelopment',
-    'strategy_recommendations': 'fldStrategyRecommendations',
-    'final_report': 'fldFinalReport',
-}
+
 
 # Save the original print function
 original_print = builtins.print
