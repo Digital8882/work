@@ -1,7 +1,4 @@
 from crewai import Task
-from langchain_openai import  ChatOpenAI
-import os
-
 
 
 def task_market_research(business_info, product_service, price, currency, payment_frequency, selling_scope, location, icp_info):
