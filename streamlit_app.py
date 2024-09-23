@@ -54,14 +54,6 @@ def patched_print(*args, **kwargs):
 builtins.print = patched_print
 
 
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        record = response.json()
-        logging.info(f"Airtable response: {record}")
-        return record['id']
-
 
 
 @traceable
