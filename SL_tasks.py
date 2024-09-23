@@ -1,5 +1,5 @@
 from crewai import Task
-from langchain_openai import ChatAnthropic, OpenAI
+from langchain_openai import  ChatOpenAI
 import os
 
 
