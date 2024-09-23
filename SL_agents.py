@@ -4,33 +4,78 @@ from crewai import Agent
 
 # Initialize the agents
 researcher = Agent(
-    role="Focus Group Researcher",
-    goal="Conduct interviews to uncover insights about icp needs and how product aligns with them. Authentically voice interviewees\' concerns, desires, and expectations to shape product development and positioning. Provide actionable insights to inform product development and marketing strategies.",
-    backstory="""You are a skilled market research specialist tasked with conducting insightful interviews to gather feedback on product's usability, features, value proposition, and market fit. Key areas to explore include:"
-        "- Product Usability and Features: Likes, dislikes, and effectiveness in solving users' problems"
-        "- Willingness to Pay: Price sensitivity and perceived value"
-        "- Switching Barriers: Costs, effort, or emotional factors preventing adoption"
-        "- Customer Acquisition Channels: Where potential customers discover and purchase similar products"
-        "- Feedback on Competitors: Areas for differentiation and improvement"
-        "- Market Trends, Growth Potential, and Adoption: Demand, consumer behavior changes, and likelihood of continued use and recommendation"
-        "Synthesize insights into a report that tells the target market's story, emphasizing product's value proposition. Use a professional, analytical tone." Include:
-        "- Executive summary with key insights and market alignment"
-        "- Methodology section explaining participant selection and perspective capture"
-        "- Analysis sections with direct quotes, paraphrased viewpoints, and your analysis"
-        "- Conclusion with actionable recommendations based on customer perspectives"
-        "Adopt an analytical, empathetic, and narrative-driven tone, weaving factual insights with interviewees' experiences to provide a compelling view of product's market landscape.""",
+    role='Researcher',
+    goal='Conduct in-depth analysis',
+    backstory='Experienced data analyst with a knack for uncovering hidden trends.',
+    cache=True,
     verbose=False,
-    allow_delegation=True,
-    max_rpm=4,    
-    llm=ChatOpenAI(temperature=0.2, model="gpt-3.5-turbo", max_tokens=4096),
+    # tools=[]  # This can be optionally specified; defaults to an empty list
+    use_system_prompt=True,  # Enable or disable system prompts for this agent
+    use_stop_words=True,  # Enable or disable stop words for this agent
+    max_rpm=30,  # Limit on the number of requests per minute
+    max_iter=5  # Maximum number of iterations for a final answer
+)
+writer = Agent(
+    role='Writer',
+    goal='Create engaging content',
+    backstory='Creative writer passionate about storytelling in technical domains.',
+    cache=True,
+    verbose=False,
+    use_system_prompt=True,
+    use_stop_words=True,
+    max_rpm=30,
+    max_iter=5,
+    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06")
 )
 
-report_writer = Agent(
-    role="Report Writer",
-    goal=" Capture customer insights, analyze data, and create comprehensive reports that inform decision-making and drive business growth.",
-    backstory=" As a skilled report writer, you meticulously gather and synthesize customer insights, transforming raw data into actionable recommendations. Your reports provide valuable guidance for strategic planning and help the team make informed choices. Your attention to detail and clear communication style contribute to the success of our initiatives. Include headings, subheadings, bullet points, and numbered lists to organize the report in a structured and easy-to-read format. Use a professional, analytical tone throughout the report, ensuring clarity and accessibility necessary for understanding by team members across different functions. ensure when things look are in a readable format and things that should be on the same line are so. Bolden headings and sub headings",
-    verbose=True,
-    allow_delegation=True,
+researcher = Agent(
+    role="Researcher",
+    goal="Conduct in-depth focus groups and interviews with potential ideal customers to gather qualitative insights.",
+    backstory="""You are a seasoned market research specialist with expertise in qualitative research methodologies. Your role involves designing and conducting focus groups to understand customer behaviors, preferences, and pain points. You are skilled at extracting nuanced insights that inform product development and customer engagement strategies.""",
     max_rpm=4,
-    llm=ChatOpenAI(temperature=0.2, model="gpt-3.5-turbo", max_tokens=4096),
+    max_itr=8,
+    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
+    cache=True,
+    verbose=False,
+    use_system_prompt=True,
+    use_stop_words=True,
+)
+
+analyst = Agent(
+    role="Analyst",
+    goal="Analyze qualitative and quantitative data to identify trends and patterns relevant to the ideal customer profile.",
+    backstory="""You are a data analyst with a strong background in interpreting complex datasets. Your expertise lies in transforming raw data into actionable insights. You utilize statistical tools and methodologies to uncover trends that help in understanding the target market and customer behaviors.""",
+    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
+    cache=True,
+    verbose=False,
+    use_system_prompt=True,
+    use_stop_words=True,
+    max_rpm=4,
+    max_itr=8,
+)
+
+profiler = Agent(
+    role="Profiler",
+    goal="Develop detailed customer personas based on research and analysis to represent the ideal customer.",
+    backstory="""You are a customer profiling expert with a knack for creating realistic and detailed customer personas. Your role is to synthesize research findings into profiles that capture demographic, psychographic, and behavioral characteristics of the ideal customer. These personas are used to guide marketing and product development strategies.""",
+    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
+    cache=True,
+    verbose=False,
+    use_system_prompt=True,
+    use_stop_words=True,
+    max_rpm=4,
+    max_itr=8,
+)
+
+strategist = Agent(
+    role="Strategist",
+    goal="Provide strategic recommendations based on the compiled report to enhance market positioning and customer engagement.",
+    backstory="""You are a market strategist with extensive experience in developing go-to-market strategies. Your expertise includes market segmentation, positioning, and identifying channels to reach the ideal customer. You use insights from research and analysis to formulate strategies that align with business objectives.""",
+    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
+    cache=True,
+    verbose=False,
+    use_system_prompt=True,
+    use_stop_words=True,
+    max_rpm=4,
+    max_itr=8,
 )
