@@ -2,9 +2,7 @@ from crewai import Task
 from langchain_openai import ChatAnthropic, OpenAI
 import os
 
-# Initialize Langchain models
-anthropic_llm = ChatAnthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
-openai_llm = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
 
 def task_market_research(business_info, product_service, price, currency, payment_frequency, selling_scope, location, icp_info):
     description = f"""
