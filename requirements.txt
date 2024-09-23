@@ -6,7 +6,7 @@ python-dotenv
 streamlit
 chromadb
 beautifulsoup4
-crewai==0.30.0
+crewai
 pydantic
 langchain-anthropic
 pysqlite3-binary
