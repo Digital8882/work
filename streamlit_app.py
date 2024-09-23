@@ -57,22 +57,7 @@ def patched_print(*args, **kwargs):
 # Patch the print function
 builtins.print = patched_print
 
-@traceable
-async def send_to_airtable(email, market_research_output, data_analysis_output, persona_development_output, strategy_recommendations_output, final_report_output):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    data = {
-        "fields": {
-            "Email": email,
-            AIRTABLE_FIELDS['market_research']: market_research_output,
-            AIRTABLE_FIELDS['data_analysis']: data_analysis_output,
-            AIRTABLE_FIELDS['persona_development']: persona_development_output,
-            AIRTABLE_FIELDS['strategy_recommendations']: strategy_recommendations_output,
-            AIRTABLE_FIELDS['final_report']: final_report_output,
-        }
+
     }
     async with httpx.AsyncClient() as client:
         response = await client.post(url, headers=headers, json=data)
@@ -81,26 +66,9 @@ async def send_to_airtable(email, market_research_output, data_analysis_output, 
         logging.info(f"Airtable response: {record}")
         return record['id']
 
-@traceable
-async def retrieve_from_airtable(record_id):
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{AIRTABLE_TABLE_NAME}/{record_id}"
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}"
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, headers=headers)
-        response.raise_for_status()
-        record = response.json()
-        fields = record.get('fields', {})
-        logging.info("Data retrieved from Airtable successfully")
-        return (
-            fields.get(AIRTABLE_FIELDS['market_research'], ''),
-            fields.get(AIRTABLE_FIELDS['data_analysis'], ''),
-            fields.get(AIRTABLE_FIELDS['persona_development'], ''),
-            fields.get(AIRTABLE_FIELDS['strategy_recommendations'], ''),
-            fields.get(AIRTABLE_FIELDS['final_report'], ''),
-        )
 
+
+@traceable
 @traceable
 async def start_crew_process(business_info, product_service, price, currency, payment_frequency, selling_scope, location, icp_info, retries=3):
     task_description = f"New task from {business_info.get('email')} for the product/service '{product_service.get('name')}' priced at {price} {currency}. Location: {location}."
@@ -108,6 +76,9 @@ async def start_crew_process(business_info, product_service, price, currency, pa
         task_description += f" Selling locally in {location}."
     else:
         task_description += " Selling globally."
+
+    # Instantiate ChatAnthropic separately if needed
+    anthropic_llm = ChatAnthropic(temperature=0, model="sonnet-3.5-sonnet-20240620")  # Optional: Use if needed elsewhere
 
     # Initialize the Crew with updated configurations
     project_crew = Crew(
@@ -117,15 +88,46 @@ async def start_crew_process(business_info, product_service, price, currency, pa
             task_persona_development(),
             task_strategy_recommendations(),
             task_final_report(business_info, product_service, price, currency, payment_frequency, selling_scope, location)
-        ],  # Updated tasks
-        agents=[researcher, analyst, profiler, strategist],  # Updated agents
-        manager_llm="sonnet-3.5-sonnet-20240620",  # Updated line # Updated manager LLM
+        ],
+        agents=[researcher, analyst, profiler, strategist],
+        manager_llm="sonnet-3.5-sonnet-20240620",  # Updated line: Pass model name as string
         process=Process.hierarchical,
         respect_context_window=True,
         memory=True,
         manager_agent=None,
         planning=True,
     )
+
+    for attempt in range(retries):
+        try:
+            logging.info(f"Starting crew process, attempt {attempt + 1}")
+            results = project_crew.kickoff()
+            # Access task outputs directly
+            market_research_output = results.get('task_market_research', "No Market Research output")
+            data_analysis_output = results.get('task_data_analysis', "No Data Analysis output")
+            persona_development_output = results.get('task_persona_development', "No Persona Development output")
+            strategy_recommendations_output = results.get('task_strategy_recommendations', "No Strategy Recommendations output")
+            final_report_output = results.get('task_final_report', "No Final Report output")
+            logging.info("Crew process completed successfully")
+            return (
+                market_research_output,
+                data_analysis_output,
+                persona_development_output,
+                strategy_recommendations_output,
+                final_report_output
+            )
+        except BrokenPipeError as e:
+            logging.error(f"BrokenPipeError occurred on attempt {attempt + 1}: {e}")
+            logging.debug(traceback.format_exc())
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                raise
+        except Exception as e:
+            logging.error(f"An error occurred during the crew process: {e}")
+            logging.debug(traceback.format_exc())
+            raise
+
 
     for attempt in range(retries):
         try:
