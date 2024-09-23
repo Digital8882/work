@@ -90,7 +90,7 @@ async def start_crew_process(business_info, product_service, price, currency, pa
             task_final_report(business_info, product_service, price, currency, payment_frequency, selling_scope, location)
         ],
         agents=[researcher, analyst, profiler, strategist],
-        manager_llm="sonnet-3.5-sonnet-20240620",  # Updated line: Pass model name as string
+        manager_llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"), # Updated line: Pass model name as string
         process=Process.hierarchical,
         respect_context_window=True,
         memory=True,
