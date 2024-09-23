@@ -1,13 +1,7 @@
 import streamlit as st
 from SL_agents import researcher, analyst, profiler, strategist  # Updated agents
-from SL_tasks import (
-    task_market_research,
-    task_data_analysis,
-    task_persona_development,
-    task_strategy_recommendations,
-    task_final_report,
-)
-from langchain_openai import ChatAnthropic  # Updated to use ChatAnthropic
+from SL_tasks import task_market_research, task_data_analysis ,task_persona_development, task_strategy_recommendations, task_final_report
+from langchain_Anthropic import ChatAnthropic  # Updated to use ChatAnthropic
 from langsmith import traceable
 from crewai import Crew, Process, Task
 from fpdf import FPDF
