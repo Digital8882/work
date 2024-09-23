@@ -2,7 +2,6 @@ langchain
 langchain_community
 langchain_core
 langchain_openai
-langchain_anthropic
 python-dotenv
 streamlit
 chromadb
