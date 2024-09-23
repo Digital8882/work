@@ -42,21 +42,6 @@ os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY")  # Securely fet
 # Save the original print function
 original_print = builtins.print
 
-# Define a patched print function that logs instead of printing
-def patched_print(*args, **kwargs):
-    try:
-        original_print(*args, **kwargs)
-    except BrokenPipeError:
-        logging.error(f"BrokenPipeError: {args}")
-        logging.debug(traceback.format_exc())
-
-# Patch the print function
-builtins.print = patched_print
-
-
-
-
-@traceable
 @traceable
 async def start_crew_process(business_info, product_service, price, currency, payment_frequency, selling_scope, location, icp_info, retries=3):
     task_description = f"New task from {business_info.get('email')} for the product/service '{product_service.get('name')}' priced at {price} {currency}. Location: {location}."
