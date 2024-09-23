@@ -73,8 +73,7 @@ async def start_crew_process(business_info, product_service, price, currency, pa
     else:
         task_description += " Selling globally."
 
-    # Instantiate ChatAnthropic separately if needed
-    anthropic_llm = ChatAnthropic(temperature=0, model="sonnet-3.5-sonnet-20240620")  # Optional: Use if needed elsewhere
+
 
     # Initialize the Crew with updated configurations
     project_crew = Crew(
