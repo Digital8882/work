@@ -119,7 +119,7 @@ async def start_crew_process(business_info, product_service, price, currency, pa
             task_final_report(business_info, product_service, price, currency, payment_frequency, selling_scope, location)
         ],  # Updated tasks
         agents=[researcher, analyst, profiler, strategist],  # Updated agents
-        manager_llm=ChatAnthropic(temperature=0, model="sonnet-3.5-sonnet-20240620"),  # Updated manager LLM
+        manager_llm="sonnet-3.5-sonnet-20240620",  # Updated line # Updated manager LLM
         process=Process.hierarchical,
         respect_context_window=True,
         memory=True,
