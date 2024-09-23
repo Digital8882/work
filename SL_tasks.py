@@ -1,76 +1,116 @@
-researcher = Agent(
-    role='Researcher',
-    goal='Conduct in-depth analysis',
-    backstory='Experienced data analyst with a knack for uncovering hidden trends.',
-    cache=True,
-    verbose=False,
-    # tools=[]  # This can be optionally specified; defaults to an empty list
-    use_system_prompt=True,  # Enable or disable system prompts for this agent
-    use_stop_words=True,  # Enable or disable stop words for this agent
-    max_rpm=30,  # Limit on the number of requests per minute
-    max_iter=5  # Maximum number of iterations for a final answer
-)
-writer = Agent(
-    role='Writer',
-    goal='Create engaging content',
-    backstory='Creative writer passionate about storytelling in technical domains.',
-    cache=True,
-    verbose=False,
-    use_system_prompt=True,
-    use_stop_words=True,
-    max_rpm=30,
-    max_iter=5,
-    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06")
+from crewai import Task
+
+task_market_research = Task(
+    description=f"""
+        Conduct qualitative research to understand the needs, preferences, and pain points of potential customers for the following business:
+
+        - **Business Description:** {business_info['description']}
+        - **Product/Service:** {product_service['name']}
+          Features: {', '.join(product_service['features'])}
+          Benefits: {', '.join(product_service['benefits'])}
+        - **Price:** {price}
+        - **Location:** {location}
+        - **Unique Value Proposition:** {business_info['unique_value_proposition']}
+
+        Prepare a report summarizing the key findings from focus groups and interviews. The report should cover:
+
+        - Customer pain points and challenges.
+        - Customer goals and aspirations.
+        - Feedback on the product/service concept.
+
+        **Guidelines:**
+
+        - Do not search the internet; use only the information provided.
+        - Present findings in a clear and structured format.
+        """,
+    expected_output="A market research report summarizing key customer insights.",
+    output_file="Market_Research_Report.docx",  # Changed to .docx for simplicity
 )
 
-researcher = Agent(
-    role="Researcher",
-    goal="Conduct in-depth focus groups and interviews with potential ideal customers to gather qualitative insights.",
-    backstory="""You are a seasoned market research specialist with expertise in qualitative research methodologies. Your role involves designing and conducting focus groups to understand customer behaviors, preferences, and pain points. You are skilled at extracting nuanced insights that inform product development and customer engagement strategies.""",
-    max_rpm=4,
-    max_itr=8,
-    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
-    cache=True,
-    verbose=False,
-    use_system_prompt=True,
-    use_stop_words=True,
+task_data_analysis = Task(
+    description="""
+        Analyze the data from the market research report to identify trends and patterns. Focus on:
+
+        - Common themes in customer feedback.
+        - Demographic trends.
+        - Psychographic trends.
+
+        Prepare a data analysis report highlighting these insights.
+
+        **Guidelines:**
+
+        - Use only the data provided from the market research report.
+        - Present findings with supporting data and charts where appropriate.
+        """,
+    expected_output="A data analysis report highlighting trends and patterns.",
+    output_file="Data_Analysis_Report.docx",
 )
 
-analyst = Agent(
-    role="Analyst",
-    goal="Analyze qualitative and quantitative data to identify trends and patterns relevant to the ideal customer profile.",
-    backstory="""You are a data analyst with a strong background in interpreting complex datasets. Your expertise lies in transforming raw data into actionable insights. You utilize statistical tools and methodologies to uncover trends that help in understanding the target market and customer behaviors.""",
-    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
-    cache=True,
-    verbose=False,
-    use_system_prompt=True,
-    use_stop_words=True,
-    max_rpm=4,
-    max_itr=8,
+task_persona_development = Task(
+    description="""
+        Develop detailed customer personas based on the data analysis report. Each persona should include:
+
+        - Name and background.
+        - Demographic information.
+        - Psychographic profile.
+        - Goals and motivations.
+        - Pain points and challenges.
+        - Preferred communication channels.
+
+        **Guidelines:**
+
+        - Create at least two distinct personas.
+        - Ensure personas are realistic and based on the data provided.
+        """,
+    expected_output="Detailed customer personas in a structured format.",
+    output_file="Customer_Personas.docx",
 )
 
-profiler = Agent(
-    role="Profiler",
-    goal="Develop detailed customer personas based on research and analysis to represent the ideal customer.",
-    backstory="""You are a customer profiling expert with a knack for creating realistic and detailed customer personas. Your role is to synthesize research findings into profiles that capture demographic, psychographic, and behavioral characteristics of the ideal customer. These personas are used to guide marketing and product development strategies.""",
-    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
-    cache=True,
-    verbose=False,
-    use_system_prompt=True,
-    use_stop_words=True,
-    max_rpm=4,
-    max_itr=8,
+task_strategy_recommendations = Task(
+    description="""
+        Based on the customer personas and insights from previous reports, provide strategic recommendations on:
+
+        - Places where the ideal customers can be found.
+        - Engagement strategies (without going into marketing tactics).
+        - Suggestions for aligning the product/service with customer needs.
+
+        **Guidelines:**
+
+        - Focus on identifying locations, platforms, or environments where the ideal customer is likely to be present.
+        - Do not include marketing strategies or product development details.
+        """,
+    expected_output="Strategic recommendations focusing on customer engagement points.",
+    output_file="Strategic_Recommendations.docx",
 )
 
-strategist = Agent(
-    role="Strategist",
-    goal="Provide strategic recommendations based on the compiled report to enhance market positioning and customer engagement.",
-    backstory="""You are a market strategist with extensive experience in developing go-to-market strategies. Your expertise includes market segmentation, positioning, and identifying channels to reach the ideal customer. You use insights from research and analysis to formulate strategies that align with business objectives.""",
-    llm=ChatOpenAI(temperature=0, model="gpt-4o-2024-08-06"),
-    cache=True,
-    verbose=False,
-    use_system_prompt=True,
-    use_stop_words=True,
-    max_rpm=4,
-    max_itr=8,
+task_final_report = Task(
+    description=f"""
+        Compile all the previous reports into a comprehensive Ideal Customer Profile (ICP) report for {business_info['name']}. The final report should include:
+
+        - Executive Summary.
+        - Market Research Findings.
+        - Data Analysis Insights.
+        - Customer Personas.
+        - Strategic Recommendations.
+        - Conclusion.
+
+        Include the following specific information:
+        - Product/Service: {product_service['name']}
+        - Price: {price}
+        - Location: {location}
+
+        **Guidelines:**
+
+        - Ensure the report flows logically from one section to the next.
+        - Use professional language and formatting.
+        - The report should be approximately 8 pages long.
+
+        **Important:**
+
+        - Do not include marketing strategies except for places where the ICP can be found.
+        - Do not include product details beyond what has been provided.
+        """,
+    expected_output="A comprehensive ICP report ready for presentation.",
+    output_file="ICP_Report.docx",
 )
+# Establishing the crew with a hierarchical process and additional configurations
